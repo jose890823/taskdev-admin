@@ -1,0 +1,38 @@
+{
+  "welcome": "Bienvenido",
+  "app": {
+    "name": "TaskHub",
+    "title": "Panel de Administracion",
+    "description": "Administracion de TaskHub"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "confirm": "Confirmar",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "crud": {
+    "create": "Crear {resource}",
+    "edit": "Editar {resource}",
+    "delete": "Eliminar {resource}",
+    "list": "Lista de {resource}",
+    "created": "{resource} creado exitosamente",
+    "updated": "{resource} actualizado exitosamente",
+    "deleted": "{resource} eliminado exitosamente",
+    "confirmDelete": "¿Estás seguro de eliminar este {resource}?"
+  },
+  "validation": {
+    "required": "Este campo es requerido",
+    "email": "Debe ser un email válido",
+    "min": "Mínimo {min} caracteres",
+    "max": "Máximo {max} caracteres"
+  }
+}

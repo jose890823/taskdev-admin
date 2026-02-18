@@ -1,0 +1,38 @@
+{
+  "welcome": "Welcome",
+  "app": {
+    "name": "TaskHub",
+    "title": "Admin Dashboard",
+    "description": "TaskHub Administration"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "crud": {
+    "create": "Create {resource}",
+    "edit": "Edit {resource}",
+    "delete": "Delete {resource}",
+    "list": "{resource} List",
+    "created": "{resource} created successfully",
+    "updated": "{resource} updated successfully",
+    "deleted": "{resource} deleted successfully",
+    "confirmDelete": "Are you sure you want to delete this {resource}?"
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Must be a valid email",
+    "min": "Minimum {min} characters",
+    "max": "Maximum {max} characters"
+  }
+}
