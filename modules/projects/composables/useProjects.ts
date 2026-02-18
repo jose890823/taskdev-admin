@@ -45,7 +45,7 @@ export const useProjects = () => {
     loading.value = true
     error.value = null
     try {
-      const res = await $fetch<{ success: boolean; data: Project }>(`${getApiUrl()}/projects/${slug}`, { headers: headers() })
+      const res = await $fetch<{ success: boolean; data: Project }>(`${getApiUrl()}/projects/by-slug/${slug}`, { headers: headers() })
       currentProject.value = res.data
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error cargando proyecto'
