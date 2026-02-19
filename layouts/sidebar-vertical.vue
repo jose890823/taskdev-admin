@@ -55,10 +55,12 @@
 
           <!-- Controles del header -->
           <div class="ml-auto flex items-center gap-2">
+            <NotificationBell @click="notificationPanelOpen = true" />
             <ThemeToggle />
             <LayoutSelector />
             <LanguageSwitcher />
           </div>
+          <NotificationPanel v-model:open="notificationPanelOpen" />
         </div>
       </header>
 
@@ -86,6 +88,8 @@ import AppSidebar from '~/components/layout/AppSidebar.vue'
 import LanguageSwitcher from '~/components/layout/LanguageSwitcher.vue'
 import ThemeToggle from '~/components/layout/ThemeToggle.vue'
 import LayoutSelector from '~/components/layout/LayoutSelector.vue'
+import NotificationBell from '~/components/layout/NotificationBell.vue'
+import NotificationPanel from '~/components/layout/NotificationPanel.vue'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -114,6 +118,7 @@ import { useBreadcrumbMeta } from '~/composables/useBreadcrumbMeta'
  */
 
 const route = useRoute()
+const notificationPanelOpen = ref(false)
 const { isUuid, getMetaForUuid, truncateUuid } = useBreadcrumbMeta()
 
 // Generar breadcrumbs dinamicamente desde la ruta

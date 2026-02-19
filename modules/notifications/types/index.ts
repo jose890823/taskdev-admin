@@ -1,20 +1,18 @@
-// Notification Types - Admin Module
+// Notification Types - Admin Module (TaskHub)
 
 export type NotificationType =
-  | 'enrollment_created' | 'enrollment_confirmed' | 'enrollment_expired' | 'enrollment_expiring_soon'
-  | 'payment_received' | 'payment_failed' | 'payment_reminder' | 'refund_processed'
-  | 'evaluation_available' | 'evaluation_graded' | 'evaluation_deadline'
-  | 'certificate_issued' | 'certificate_expiring'
-  | 'workshop_reminder' | 'workshop_registration' | 'workshop_cancelled' | 'workshop_certificate'
-  | 'achievement_earned' | 'course_completed' | 'module_completed'
+  | 'task_assigned' | 'task_unassigned' | 'task_status_changed'
+  | 'task_completed' | 'task_commented' | 'task_due_soon'
+  | 'subtask_created'
+  | 'project_member_added' | 'project_member_removed'
+  | 'org_member_added' | 'org_invitation_received'
   | 'system_announcement' | 'account_security' | 'password_changed'
-  | 'referral_used' | 'referral_reward'
   | 'welcome' | 'custom'
 
 export type NotificationChannel = 'in_app' | 'email' | 'sms' | 'push'
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent'
 export type NotificationStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed'
-export type BroadcastAudience = 'all_users' | 'active_clients' | 'specific_users'
+export type BroadcastAudience = 'all_users' | 'organization_members' | 'specific_users'
 
 export interface Notification {
   id: string
@@ -49,6 +47,18 @@ export interface Notification {
   updatedAt: string
 }
 
+// Event Config (admin)
+export interface NotificationEventConfig {
+  id: string
+  eventType: string
+  label: string
+  description: string | null
+  isEnabled: boolean
+  category: string
+  createdAt: string
+  updatedAt: string
+}
+
 // DTOs
 export interface CreateNotificationDto {
   userId: string
@@ -69,7 +79,6 @@ export interface SendBroadcastDto {
   title: string
   message: string
   audience: BroadcastAudience
-  courseId?: string
   userIds?: string[]
   priority?: NotificationPriority
   actionUrl?: string
