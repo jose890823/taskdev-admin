@@ -412,7 +412,10 @@ const handleDragEnd = () => {
           }"
           @click="emit('task-click', task)"
         >
-          <p class="text-sm font-medium leading-snug mb-2">{{ task.title }}</p>
+          <div class="flex items-start justify-between gap-1 mb-2">
+            <p class="text-sm font-medium leading-snug">{{ task.title }}</p>
+            <span v-if="task.systemCode" class="text-[9px] text-muted-foreground font-mono shrink-0 mt-0.5">{{ task.systemCode }}</span>
+          </div>
 
           <!-- Assignee names (truncated) -->
           <p v-if="getAssigneeNames(task)" class="text-[10px] text-muted-foreground mb-1.5 truncate">

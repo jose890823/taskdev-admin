@@ -116,6 +116,7 @@ const getOrgName = (orgId: string | null | undefined) => {
           <div class="flex items-center gap-2 cursor-pointer" @click="goToProject(project.slug)">
             <div v-if="project.color" class="w-3 h-3 rounded-full" :style="{ backgroundColor: project.color }" />
             <p class="text-sm font-semibold">{{ project.name }}</p>
+            <span v-if="project.systemCode" class="text-[10px] text-muted-foreground font-mono">{{ project.systemCode }}</span>
           </div>
           <p v-if="project.description" class="text-xs text-muted-foreground mt-1 cursor-pointer" @click="goToProject(project.slug)">
             <span v-html="project.description" />

@@ -301,7 +301,10 @@ onMounted(async () => {
             :style="{ backgroundColor: currentProject.color }"
           />
           <div v-if="!editingName">
-            <h1 class="text-lg font-semibold tracking-tight leading-tight">{{ currentProject.name }}</h1>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg font-semibold tracking-tight leading-tight">{{ currentProject.name }}</h1>
+              <Badge v-if="currentProject.systemCode" variant="secondary" class="text-[10px] px-1.5 py-0 font-mono">{{ currentProject.systemCode }}</Badge>
+            </div>
             <p v-if="currentProject.description" class="text-xs text-muted-foreground" v-html="currentProject.description" />
             <p v-else class="text-xs text-muted-foreground">{{ currentProject.slug }}</p>
           </div>
@@ -512,9 +515,12 @@ onMounted(async () => {
 
               <!-- Title -->
               <template #cell-title="{ row }">
-                <span class="text-sm" :class="{ 'line-through text-muted-foreground': getTaskStatusInfo(row.statusId)?.isCompleted }">
-                  {{ row.title }}
-                </span>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-sm" :class="{ 'line-through text-muted-foreground': getTaskStatusInfo(row.statusId)?.isCompleted }">
+                    {{ row.title }}
+                  </span>
+                  <span v-if="row.systemCode" class="text-[10px] text-muted-foreground font-mono shrink-0">{{ row.systemCode }}</span>
+                </div>
               </template>
 
               <!-- Assignees -->

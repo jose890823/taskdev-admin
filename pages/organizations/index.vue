@@ -85,7 +85,10 @@ const goToOrg = (id: string) => {
         @click="goToOrg(org.id)"
       >
         <CardContent class="p-4">
-          <p class="text-sm font-semibold">{{ org.name }}</p>
+          <div class="flex items-center gap-2">
+            <p class="text-sm font-semibold">{{ org.name }}</p>
+            <span v-if="org.systemCode" class="text-[10px] text-muted-foreground font-mono">{{ org.systemCode }}</span>
+          </div>
           <p v-if="org.description" class="text-xs text-muted-foreground mt-1" v-html="org.description" />
           <p v-else class="text-xs text-muted-foreground mt-1">{{ org.slug }}</p>
         </CardContent>

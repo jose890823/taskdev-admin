@@ -275,9 +275,12 @@ const handleCreate = async () => {
 
       <!-- Title with strikethrough if completed -->
       <template #cell-title="{ row }">
-        <span :class="{ 'line-through text-muted-foreground': row.completedAt }">
-          {{ row.title }}
-        </span>
+        <div class="flex items-center gap-1.5">
+          <span :class="{ 'line-through text-muted-foreground': row.completedAt }">
+            {{ row.title }}
+          </span>
+          <span v-if="row.systemCode" class="text-[10px] text-muted-foreground font-mono shrink-0">{{ row.systemCode }}</span>
+        </div>
       </template>
 
       <!-- Priority badge -->

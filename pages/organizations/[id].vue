@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useOrganizations } from '~/modules/organizations/composables/useOrganizations'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 import { useToast } from '~/composables/useToast'
+import { useBreadcrumbMeta } from '~/composables/useBreadcrumbMeta'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
@@ -19,6 +20,7 @@ const toast = useToast()
 
 const { currentOrg, members, invitations, loading, error, fetchById, fetchMembers, fetchInvitations, createInvitation, resendInvitation, cancelInvitation } = useOrganizations()
 const { user } = useAuth()
+const { setMeta } = useBreadcrumbMeta()
 
 // Role-based visibility: only owner/admin can manage invitations
 const currentUserRole = computed(() => {
@@ -60,6 +62,13 @@ onMounted(async () => {
     fetchMembers(orgId),
     fetchInvitations(orgId),
   ])
+  if (currentOrg.value?.systemCode) {
+    setMeta(orgId, {
+      systemCode: currentOrg.value.systemCode,
+      uuid: currentOrg.value.id,
+      label: currentOrg.value.name,
+    })
+  }
 })
 
 const handleInvite = async () => {
@@ -134,7 +143,10 @@ const getMemberEmail = (member: any): string | null => {
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </Button>
         <div>
-          <h1 class="text-lg font-semibold tracking-tight leading-tight">{{ currentOrg.name }}</h1>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-semibold tracking-tight leading-tight">{{ currentOrg.name }}</h1>
+            <Badge v-if="currentOrg.systemCode" variant="secondary" class="text-[10px] px-1.5 py-0 font-mono">{{ currentOrg.systemCode }}</Badge>
+          </div>
           <p v-if="currentOrg.description" class="text-xs text-muted-foreground" v-html="currentOrg.description" />
           <p v-else class="text-xs text-muted-foreground">{{ currentOrg.slug }}</p>
         </div>

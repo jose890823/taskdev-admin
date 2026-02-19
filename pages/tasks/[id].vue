@@ -4,6 +4,7 @@ import { useTasks } from '~/modules/tasks/composables/useTasks'
 import { useProjects } from '~/modules/projects/composables/useProjects'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 import { useToast } from '~/composables/useToast'
+import { useBreadcrumbMeta } from '~/composables/useBreadcrumbMeta'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
@@ -35,6 +36,8 @@ const toast = useToast()
 const config = useRuntimeConfig()
 const apiUrl = config.public.apiUrl as string
 const { accessToken } = useAuth()
+
+const { setMeta } = useBreadcrumbMeta()
 
 const {
   currentTask, subtasks, comments, loading, error,
@@ -85,6 +88,14 @@ onMounted(async () => {
     fetchSubtasks(taskId),
     fetchComments(taskId),
   ])
+  // Set breadcrumb meta
+  if (currentTask.value?.systemCode) {
+    setMeta(taskId, {
+      systemCode: currentTask.value.systemCode,
+      uuid: currentTask.value.id,
+      label: currentTask.value.title,
+    })
+  }
   // Load statuses and members after we know the task
   if (currentTask.value?.projectId) {
     await Promise.all([
@@ -289,6 +300,7 @@ const getInitials = (assignee: TaskAssignee) => {
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </Button>
             <h1 class="text-lg font-semibold tracking-tight truncate">{{ currentTask.title }}</h1>
+            <Badge v-if="currentTask.systemCode" variant="secondary" class="text-[10px] px-1.5 py-0 shrink-0 font-mono">{{ currentTask.systemCode }}</Badge>
             <Badge variant="outline" class="text-xs shrink-0">{{ currentTask.type === 'daily' ? 'Diaria' : 'Proyecto' }}</Badge>
             <Badge v-if="currentStatusName" variant="outline" class="text-xs shrink-0" :style="{ borderColor: currentStatusName.color, color: currentStatusName.color }">
               <div class="w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: currentStatusName.color }" />
