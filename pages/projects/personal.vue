@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useProjects } from '~/modules/projects/composables/useProjects'
-import { useOrganizations } from '~/modules/organizations/composables/useOrganizations'
 import { useToast } from '~/composables/useToast'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
@@ -9,19 +8,8 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '~/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '~/components/ui/select'
 
 definePageMeta({
   middleware: ['auth', 'module-access'],
@@ -29,7 +17,6 @@ definePageMeta({
 })
 
 const { projects, loading, error, fetchAll, create } = useProjects()
-const { organizations, fetchAll: fetchOrgs } = useOrganizations()
 const toast = useToast()
 const router = useRouter()
 
@@ -37,34 +24,29 @@ const showCreateDialog = ref(false)
 const newProjectName = ref('')
 const newProjectDescription = ref('')
 const newProjectColor = ref('#6366f1')
-const newProjectOrgId = ref('')
 
 const colorPresets = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4']
 
-const teamProjects = computed(() => projects.value.filter(p => p.organizationId))
-
 onMounted(async () => {
-  await Promise.all([fetchAll(), fetchOrgs()])
+  await fetchAll({ personal: true })
 })
 
 const handleCreate = async () => {
-  if (!newProjectName.value.trim() || !newProjectOrgId.value) return
+  if (!newProjectName.value.trim()) return
 
   const project = await create({
     name: newProjectName.value,
     description: newProjectDescription.value || undefined,
     color: newProjectColor.value,
-    organizationId: newProjectOrgId.value,
   })
 
   if (project) {
-    toast.success('Proyecto de equipo creado')
+    toast.success('Proyecto personal creado')
     showCreateDialog.value = false
     newProjectName.value = ''
     newProjectDescription.value = ''
     newProjectColor.value = '#6366f1'
-    newProjectOrgId.value = ''
-    await fetchAll()
+    await fetchAll({ personal: true })
   } else {
     toast.error('Error', error.value || 'No se pudo crear el proyecto')
   }
@@ -73,24 +55,14 @@ const handleCreate = async () => {
 const goToProject = (slug: string) => {
   router.push(`/projects/${slug}`)
 }
-
-const goToBoard = (slug: string) => {
-  router.push(`/projects/${slug}/board`)
-}
-
-const getOrgName = (orgId: string | null | undefined) => {
-  if (!orgId) return 'Sin organizacion'
-  const org = organizations.value.find(o => o.id === orgId)
-  return org?.name || 'Organizacion'
-}
 </script>
 
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-lg font-semibold tracking-tight">Proyectos de Equipo</h1>
-        <p class="text-xs text-muted-foreground">Proyectos de organizaciones con tablero Kanban</p>
+        <h1 class="text-lg font-semibold tracking-tight">Mis Proyectos</h1>
+        <p class="text-xs text-muted-foreground">Proyectos personales sin organizacion</p>
       </div>
       <Button size="sm" @click="showCreateDialog = true">Nuevo Proyecto</Button>
     </div>
@@ -101,31 +73,25 @@ const getOrgName = (orgId: string | null | undefined) => {
 
     <div v-if="loading" class="text-center py-8 text-muted-foreground">Cargando...</div>
 
-    <div v-else-if="teamProjects.length === 0" class="text-center py-8">
-      <p class="text-muted-foreground">No tienes proyectos de equipo</p>
-      <Button class="mt-4" @click="showCreateDialog = true">Crear proyecto de equipo</Button>
+    <div v-else-if="projects.length === 0" class="text-center py-8">
+      <p class="text-muted-foreground">No tienes proyectos personales</p>
+      <Button class="mt-4" @click="showCreateDialog = true">Crear tu primer proyecto</Button>
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       <Card
-        v-for="project in teamProjects"
+        v-for="project in projects"
         :key="project.id"
-        class="hover:shadow-md transition-shadow"
+        class="cursor-pointer hover:shadow-md transition-shadow"
+        @click="goToProject(project.slug)"
       >
         <CardContent class="p-4">
-          <div class="flex items-center gap-2 cursor-pointer" @click="goToProject(project.slug)">
+          <div class="flex items-center gap-2">
             <div v-if="project.color" class="w-3 h-3 rounded-full" :style="{ backgroundColor: project.color }" />
             <p class="text-sm font-semibold">{{ project.name }}</p>
           </div>
-          <p v-if="project.description" class="text-xs text-muted-foreground mt-1 cursor-pointer" @click="goToProject(project.slug)">
-            <span v-html="project.description" />
-          </p>
-          <div class="flex items-center gap-2 mt-2">
-            <Badge variant="outline" class="text-[10px] px-1 py-0">{{ getOrgName(project.organizationId) }}</Badge>
-            <Button size="sm" variant="secondary" class="h-6 text-xs" @click="goToBoard(project.slug)">
-              Tablero
-            </Button>
-          </div>
+          <p v-if="project.description" class="text-xs text-muted-foreground mt-1"><span v-html="project.description" /></p>
+          <Badge variant="outline" class="text-[10px] px-1 py-0 mt-1">Personal</Badge>
         </CardContent>
       </Card>
     </div>
@@ -133,7 +99,7 @@ const getOrgName = (orgId: string | null | undefined) => {
     <Dialog v-model:open="showCreateDialog">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuevo Proyecto de Equipo</DialogTitle>
+          <DialogTitle>Nuevo Proyecto Personal</DialogTitle>
         </DialogHeader>
         <form class="space-y-4" @submit.prevent="handleCreate">
           <div class="space-y-2">
@@ -143,19 +109,6 @@ const getOrgName = (orgId: string | null | undefined) => {
           <div class="space-y-2">
             <Label>Descripcion (opcional)</Label>
             <RichTextEditor v-model="newProjectDescription" placeholder="Describe el proyecto..." :rows="6" />
-          </div>
-          <div class="space-y-2">
-            <Label>Organizacion</Label>
-            <Select v-model="newProjectOrgId">
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar organizacion..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="org in organizations" :key="org.id" :value="org.id">
-                  {{ org.name }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <div class="space-y-2">
             <Label>Color</Label>
@@ -180,7 +133,7 @@ const getOrgName = (orgId: string | null | undefined) => {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" @click="showCreateDialog = false">Cancelar</Button>
-            <Button type="submit" :disabled="!newProjectName.trim() || !newProjectOrgId || loading">Crear</Button>
+            <Button type="submit" :disabled="!newProjectName.trim() || loading">Crear</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -8,6 +8,12 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Separator } from '~/components/ui/separator'
 
+const props = withDefaults(defineProps<{
+  redirect?: string
+}>(), {
+  redirect: '',
+})
+
 const { login, loading, error: authError } = useAuth()
 const { success, error } = useToast()
 
@@ -52,8 +58,13 @@ const handleSubmit = async () => {
   })
 
   if (success) {
-    // Redirigir al inicio
-    await navigateTo('/')
+    // Verificar si hay invitacion pendiente en localStorage
+    const pendingInvite = import.meta.client ? localStorage.getItem('pending-invite-token') : null
+    if (pendingInvite) {
+      await navigateTo(`/invite/${pendingInvite}`)
+    } else {
+      await navigateTo(props.redirect || '/')
+    }
   } else {
     error('Error de autenticación', authError.value || 'Credenciales incorrectas')
   }
@@ -233,12 +244,15 @@ const togglePassword = () => {
             </div> -->
 
             <!-- Sign Up Link -->
-            <!-- <p class="text-center text-sm text-muted-foreground">
-              ¿No tienes cuenta?
-              <a href="#" class="underline underline-offset-4 hover:text-primary">
-                Regístrate
-              </a>
-            </p> -->
+            <p class="text-center text-sm text-muted-foreground">
+              No tienes cuenta?
+              <NuxtLink
+                :to="redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : '/register'"
+                class="underline underline-offset-4 hover:text-primary"
+              >
+                Registrate
+              </NuxtLink>
+            </p>
           </div>
         </form>
 

@@ -137,6 +137,32 @@ export const useOrganizations = () => {
       await fetchInvitations(orgId)
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error creando invitacion'
+      throw e
+    }
+  }
+
+  const resendInvitation = async (invitationId: string) => {
+    try {
+      await $fetch(`${getApiUrl()}/invitations/${invitationId}/resend`, {
+        method: 'POST',
+        headers: headers(),
+      })
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Error reenviando invitacion'
+      throw e
+    }
+  }
+
+  const cancelInvitation = async (invitationId: string, orgId: string) => {
+    try {
+      await $fetch(`${getApiUrl()}/invitations/${invitationId}`, {
+        method: 'DELETE',
+        headers: headers(),
+      })
+      await fetchInvitations(orgId)
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Error cancelando invitacion'
+      throw e
     }
   }
 
@@ -156,5 +182,7 @@ export const useOrganizations = () => {
     addMember,
     fetchInvitations,
     createInvitation,
+    resendInvitation,
+    cancelInvitation,
   }
 }

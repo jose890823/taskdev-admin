@@ -54,6 +54,19 @@ export interface AuthResponse {
   message: string
 }
 
+export interface RegisterDto {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  phone: string
+}
+
+export interface VerifyEmailDto {
+  email: string
+  otpCode: string
+}
+
 export interface AuthState {
   user: User | null
   accessToken: string | null

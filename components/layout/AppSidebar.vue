@@ -116,6 +116,7 @@ import {
 import {
   HomeIcon,
   UsersIcon,
+  UserIcon,
   PackageIcon,
   SettingsIcon,
   FileTextIcon,
@@ -137,6 +138,9 @@ import {
   ShoppingCartIcon,
   CheckSquareIcon,
   UserPlusIcon,
+  FolderIcon,
+  FolderKanbanIcon,
+  CalendarCheckIcon,
 } from 'lucide-vue-next'
 import { getGroupedModulesForRole, moduleGroupConfig } from '~/app/module-config'
 import type { ModuleGroup, ModuleConfig } from '~/app/module-config'
@@ -154,6 +158,7 @@ const isGroupActive = (groupKey: ModuleGroup, modules: ModuleConfig[]) => {
 
 const iconMap: Record<string, any> = {
   users: UsersIcon,
+  user: UserIcon,
   package: PackageIcon,
   settings: SettingsIcon,
   'file-text': FileTextIcon,
@@ -174,6 +179,9 @@ const iconMap: Record<string, any> = {
   'shopping-cart': ShoppingCartIcon,
   'check-square': CheckSquareIcon,
   'user-plus': UserPlusIcon,
+  folder: FolderIcon,
+  'folder-kanban': FolderKanbanIcon,
+  'calendar-check': CalendarCheckIcon,
 }
 
 const getModuleIcon = (icon?: string) => {

@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useOrganizations } from '~/modules/organizations/composables/useOrganizations'
 import { useToast } from '~/composables/useToast'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card'
+import { Card, CardContent } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import {
@@ -55,40 +55,40 @@ const goToOrg = (id: string) => {
 </script>
 
 <template>
-  <div class="container mx-auto py-6 space-y-6">
+  <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Organizaciones</h1>
-        <p class="text-muted-foreground mt-1">Gestiona tus organizaciones y equipos</p>
+        <h1 class="text-lg font-semibold tracking-tight">Organizaciones</h1>
+        <p class="text-xs text-muted-foreground">Gestiona tus organizaciones y equipos</p>
       </div>
-      <Button @click="showCreateDialog = true">Nueva Organizacion</Button>
+      <Button size="sm" @click="showCreateDialog = true">Nueva Organizacion</Button>
     </div>
 
     <div v-if="error" class="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg">
       {{ error }}
     </div>
 
-    <div v-if="loading" class="text-center py-12 text-muted-foreground">
+    <div v-if="loading" class="text-center py-8 text-muted-foreground">
       Cargando...
     </div>
 
-    <div v-else-if="organizations.length === 0" class="text-center py-12">
-      <p class="text-muted-foreground text-lg">No tienes organizaciones aun</p>
+    <div v-else-if="organizations.length === 0" class="text-center py-8">
+      <p class="text-muted-foreground">No tienes organizaciones aun</p>
       <Button class="mt-4" @click="showCreateDialog = true">Crear tu primera organizacion</Button>
     </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       <Card
         v-for="org in organizations"
         :key="org.id"
         class="cursor-pointer hover:shadow-md transition-shadow"
         @click="goToOrg(org.id)"
       >
-        <CardHeader>
-          <CardTitle>{{ org.name }}</CardTitle>
-          <CardDescription v-if="org.description">{{ org.description }}</CardDescription>
-          <CardDescription v-else class="text-xs">{{ org.slug }}</CardDescription>
-        </CardHeader>
+        <CardContent class="p-4">
+          <p class="text-sm font-semibold">{{ org.name }}</p>
+          <p v-if="org.description" class="text-xs text-muted-foreground mt-1" v-html="org.description" />
+          <p v-else class="text-xs text-muted-foreground mt-1">{{ org.slug }}</p>
+        </CardContent>
       </Card>
     </div>
 
@@ -103,8 +103,8 @@ const goToOrg = (id: string) => {
             <Input id="org-name" v-model="newOrgName" placeholder="Mi Organizacion" />
           </div>
           <div class="space-y-2">
-            <Label for="org-desc">Descripcion (opcional)</Label>
-            <Input id="org-desc" v-model="newOrgDescription" placeholder="Descripcion breve" />
+            <Label>Descripcion (opcional)</Label>
+            <RichTextEditor v-model="newOrgDescription" placeholder="Describe la organizacion..." :rows="6" />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" @click="showCreateDialog = false">Cancelar</Button>

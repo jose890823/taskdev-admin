@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import type { User, LoginDto, AuthResponse, UserRole } from '../types'
+import type { User, LoginDto, RegisterDto, VerifyEmailDto, AuthResponse, UserRole } from '../types'
 import { userHasRole, userHasAnyRole, userIsAdmin, userIsSuperAdmin } from '../types'
 
 const getApiUrl = () => {
@@ -257,6 +257,69 @@ export const useAuth = () => {
   }
 
   /**
+   * Registro de nuevo usuario
+   */
+  const register = async (dto: RegisterDto): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+
+    try {
+      await $fetch(`${getApiUrl()}/auth/register`, {
+        method: 'POST',
+        body: dto,
+      })
+      return true
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Error al registrar'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Verificar email con codigo OTP
+   */
+  const verifyEmail = async (dto: VerifyEmailDto): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+
+    try {
+      await $fetch(`${getApiUrl()}/auth/verify-email`, {
+        method: 'POST',
+        body: dto,
+      })
+      return true
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Codigo invalido'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Reenviar codigo OTP
+   */
+  const resendOtp = async (email: string): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+
+    try {
+      await $fetch(`${getApiUrl()}/auth/resend-otp`, {
+        method: 'POST',
+        body: { email },
+      })
+      return true
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Error al reenviar codigo'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Verificar si el usuario tiene un rol específico
    */
   const hasRole = (role: UserRole | UserRole[]): boolean => {
@@ -283,6 +346,9 @@ export const useAuth = () => {
     // Métodos
     login,
     logout,
+    register,
+    verifyEmail,
+    resendOtp,
     getMe,
     refreshAccessToken,
     initAuth,

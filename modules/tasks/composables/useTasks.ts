@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import type { Task, Comment, CreateTaskDto, UpdateTaskDto, CreateCommentDto, TaskType } from '../types'
+import type { Task, Comment, CreateTaskDto, UpdateTaskDto, CreateCommentDto, TaskType, BulkPositionItem } from '../types'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 
 const getApiUrl = () => {
@@ -33,12 +33,17 @@ export const useTasks = () => {
     loading.value = true
     error.value = null
     try {
-      const res = await $fetch<{ success: boolean; data: { data: Task[]; total: number } }>(`${getApiUrl()}/tasks`, {
+      const res = await $fetch<{ success: boolean; data: any }>(`${getApiUrl()}/tasks`, {
         headers: headers(),
         params: filters,
       })
-      tasks.value = res.data.data
-      total.value = res.data.total
+      if (Array.isArray(res.data)) {
+        tasks.value = res.data
+        total.value = res.data.length
+      } else {
+        tasks.value = res.data.data
+        total.value = res.data.total
+      }
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error cargando tareas'
     } finally {
@@ -82,12 +87,16 @@ export const useTasks = () => {
     }
   }
 
+  const refreshTask = async (id: string) => {
+    const res = await $fetch<{ success: boolean; data: Task }>(`${getApiUrl()}/tasks/${id}`, { headers: headers() })
+    currentTask.value = res.data
+  }
+
   const fetchById = async (id: string) => {
     loading.value = true
     error.value = null
     try {
-      const res = await $fetch<{ success: boolean; data: Task }>(`${getApiUrl()}/tasks/${id}`, { headers: headers() })
-      currentTask.value = res.data
+      await refreshTask(id)
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error cargando tarea'
     } finally {
@@ -115,21 +124,19 @@ export const useTasks = () => {
   }
 
   const update = async (id: string, dto: UpdateTaskDto) => {
-    loading.value = true
     error.value = null
     try {
-      const res = await $fetch<{ success: boolean; data: Task }>(`${getApiUrl()}/tasks/${id}`, {
+      await $fetch<{ success: boolean; data: Task }>(`${getApiUrl()}/tasks/${id}`, {
         method: 'PATCH',
         body: dto,
         headers: headers(),
       })
-      currentTask.value = res.data
-      return res.data
+      // Re-fetch full task without triggering loading state
+      await refreshTask(id)
+      return currentTask.value
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error actualizando tarea'
       return null
-    } finally {
-      loading.value = false
     }
   }
 
@@ -163,6 +170,21 @@ export const useTasks = () => {
     }
   }
 
+  const createSubtask = async (parentId: string, dto: CreateTaskDto) => {
+    try {
+      const res = await $fetch<{ success: boolean; data: Task }>(`${getApiUrl()}/tasks/${parentId}/subtasks`, {
+        method: 'POST',
+        body: dto,
+        headers: headers(),
+      })
+      subtasks.value.push(res.data)
+      return res.data
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Error creando subtarea'
+      return null
+    }
+  }
+
   const addComment = async (dto: CreateCommentDto) => {
     try {
       await $fetch(`${getApiUrl()}/comments`, {
@@ -173,6 +195,18 @@ export const useTasks = () => {
       await fetchComments(dto.taskId)
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error creando comentario'
+    }
+  }
+
+  const bulkUpdatePositions = async (items: BulkPositionItem[]) => {
+    try {
+      await $fetch(`${getApiUrl()}/tasks/bulk-positions`, {
+        method: 'PATCH',
+        body: { items },
+        headers: headers(),
+      })
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Error actualizando posiciones'
     }
   }
 
@@ -192,7 +226,9 @@ export const useTasks = () => {
     update,
     remove,
     fetchSubtasks,
+    createSubtask,
     fetchComments,
     addComment,
+    bulkUpdatePositions,
   }
 }

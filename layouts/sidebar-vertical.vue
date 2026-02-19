@@ -10,7 +10,7 @@
     <AppSidebar />
     <SidebarInset class="bg-transparent">
       <!-- Header con breadcrumb y trigger -->
-      <header class="flex h-16 shrink-0 items-center gap-2 border-b border-white/20 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+      <header class="flex h-11 shrink-0 items-center gap-2 border-b border-white/20 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-10">
         <div class="flex items-center gap-2 px-4 w-full">
           <SidebarTrigger class="-ml-1" />
           <Separator orientation="vertical" class="mr-2 h-4" />

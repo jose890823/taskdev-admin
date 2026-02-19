@@ -17,6 +17,13 @@ export interface OrganizationMember {
   id: string
   organizationId: string
   userId: string
+  user?: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    profilePhoto?: string
+  }
   role: OrgRole
   createdAt: string
 }

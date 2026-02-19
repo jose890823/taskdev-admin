@@ -57,7 +57,7 @@ const sortConfig = ref<SortConfig>({ key: '', direction: null })
 // Paginación local (si no se proporciona desde el padre)
 const localPagination = ref<PaginationConfig>({
   page: 1,
-  pageSize: 10,
+  pageSize: 20,
   total: 0,
   pageSizeOptions: [5, 10, 20, 50, 100],
 })

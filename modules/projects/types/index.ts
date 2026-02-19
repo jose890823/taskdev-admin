@@ -18,6 +18,13 @@ export interface ProjectMember {
   id: string
   projectId: string
   userId: string
+  user?: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    profilePhoto?: string
+  }
   role: ProjectRole
   createdAt: string
 }
@@ -55,4 +62,36 @@ export interface UpdateProjectDto {
   name?: string
   description?: string
   color?: string
+}
+
+export interface CreateModuleDto {
+  name: string
+  description?: string
+  color?: string
+}
+
+export interface CreateStatusDto {
+  name: string
+  color?: string
+  icon?: string
+  isDefault?: boolean
+  isCompleted?: boolean
+}
+
+export interface AddProjectMemberDto {
+  userId: string
+  role: ProjectRole
+}
+
+export interface InviteProjectMemberDto {
+  email: string
+  role?: ProjectRole
+}
+
+export interface ProjectInvitation {
+  id: string
+  email: string
+  projectRole: string | null
+  status: 'pending' | 'accepted' | 'expired' | 'cancelled'
+  createdAt: string
 }

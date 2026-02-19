@@ -4,7 +4,7 @@
 
 export type UserRole = 'user' | 'super_admin'
 
-export type ModuleGroup = 'general' | 'organizacion' | 'proyecto' | 'sistema'
+export type ModuleGroup = 'personal' | 'equipos' | 'sistema'
 
 export interface ModuleConfig {
   name: string
@@ -18,36 +18,16 @@ export interface ModuleConfig {
 }
 
 export const modules: ModuleConfig[] = [
-  // --- General ---
-  {
-    name: 'organizations',
-    enabled: true,
-    route: '/organizations',
-    icon: 'building-2',
-    iconColor: '#0ea5e9',
-    label: 'Organizaciones',
-    allowedRoles: ['super_admin', 'user'],
-    group: 'general',
-  },
-  {
-    name: 'projects',
-    enabled: true,
-    route: '/projects',
-    icon: 'folder-kanban',
-    iconColor: '#8b5cf6',
-    label: 'Proyectos',
-    allowedRoles: ['super_admin', 'user'],
-    group: 'general',
-  },
+  // --- Personal ---
   {
     name: 'tasks',
     enabled: true,
     route: '/tasks',
     icon: 'check-square',
     iconColor: '#22c55e',
-    label: 'Tareas',
+    label: 'Mis Tareas',
     allowedRoles: ['super_admin', 'user'],
-    group: 'general',
+    group: 'personal',
   },
   {
     name: 'daily',
@@ -57,7 +37,17 @@ export const modules: ModuleConfig[] = [
     iconColor: '#f59e0b',
     label: 'Tareas Diarias',
     allowedRoles: ['super_admin', 'user'],
-    group: 'general',
+    group: 'personal',
+  },
+  {
+    name: 'personal-projects',
+    enabled: true,
+    route: '/projects/personal',
+    icon: 'folder',
+    iconColor: '#8b5cf6',
+    label: 'Mis Proyectos',
+    allowedRoles: ['super_admin', 'user'],
+    group: 'personal',
   },
   {
     name: 'notifications',
@@ -67,10 +57,32 @@ export const modules: ModuleConfig[] = [
     iconColor: '#ec4899',
     label: 'Notificaciones',
     allowedRoles: ['super_admin', 'user'],
-    group: 'general',
+    group: 'personal',
   },
 
-  // --- Organizacion ---
+  // --- Equipos ---
+  {
+    name: 'organizations',
+    enabled: true,
+    route: '/organizations',
+    icon: 'building-2',
+    iconColor: '#0ea5e9',
+    label: 'Organizaciones',
+    allowedRoles: ['super_admin', 'user'],
+    group: 'equipos',
+  },
+  {
+    name: 'projects',
+    enabled: true,
+    route: '/projects',
+    icon: 'folder-kanban',
+    iconColor: '#6366f1',
+    label: 'Proyectos de Equipo',
+    allowedRoles: ['super_admin', 'user'],
+    group: 'equipos',
+  },
+
+  // --- Sistema ---
   {
     name: 'users',
     enabled: true,
@@ -79,10 +91,8 @@ export const modules: ModuleConfig[] = [
     iconColor: '#f43f5e',
     label: 'Usuarios',
     allowedRoles: ['super_admin'],
-    group: 'organizacion',
+    group: 'sistema',
   },
-
-  // --- Sistema ---
   {
     name: 'security',
     enabled: true,
@@ -156,9 +166,8 @@ export const modules: ModuleConfig[] = [
 ]
 
 export const moduleGroupConfig: Record<ModuleGroup, { label: string; icon: string }> = {
-  general: { label: 'General', icon: 'layout-dashboard' },
-  organizacion: { label: 'Organizacion', icon: 'building-2' },
-  proyecto: { label: 'Proyecto', icon: 'folder-kanban' },
+  personal: { label: 'Personal', icon: 'user' },
+  equipos: { label: 'Equipos', icon: 'users' },
   sistema: { label: 'Sistema', icon: 'settings' },
 }
 
@@ -180,7 +189,7 @@ export const getGroupedModulesForRole = (userRoles?: UserRole[] | UserRole | str
   const groups: Record<string, ModuleConfig[]> = {}
 
   for (const mod of activeModules) {
-    const group = mod.group || 'general'
+    const group = mod.group || 'personal'
     if (!groups[group]) groups[group] = []
     groups[group].push(mod)
   }

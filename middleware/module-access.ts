@@ -43,6 +43,7 @@ function getModuleNameFromPath(path: string): string | null {
     '/feature-flags': 'feature-flags',
     // TaskHub
     '/organizations': 'organizations',
+    '/projects/personal': 'personal-projects',
     '/projects': 'projects',
     '/tasks/daily': 'daily',
     '/tasks': 'tasks',
