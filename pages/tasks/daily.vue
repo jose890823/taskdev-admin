@@ -103,7 +103,10 @@ const completedCount = computed(() => tasks.value.filter(t => t.completedAt).len
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-lg font-semibold tracking-tight">Tareas Diarias</h1>
+        <h1 class="text-lg font-semibold tracking-tight flex items-center gap-2">
+          Tareas Diarias
+          <ModuleHelpButton module-name="daily" />
+        </h1>
         <p class="text-xs text-muted-foreground">
           {{ completedCount }}/{{ tasks.length }} completadas
         </p>

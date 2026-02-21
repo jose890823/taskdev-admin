@@ -58,7 +58,10 @@ const goToOrg = (id: string) => {
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-lg font-semibold tracking-tight">Organizaciones</h1>
+        <h1 class="text-lg font-semibold tracking-tight flex items-center gap-2">
+          Organizaciones
+          <ModuleHelpButton module-name="organizations" />
+        </h1>
         <p class="text-xs text-muted-foreground">Gestiona tus organizaciones y equipos</p>
       </div>
       <Button size="sm" @click="showCreateDialog = true">Nueva Organizacion</Button>

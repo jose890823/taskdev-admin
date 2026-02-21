@@ -89,7 +89,10 @@ const getOrgName = (orgId: string | null | undefined) => {
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-lg font-semibold tracking-tight">Proyectos de Equipo</h1>
+        <h1 class="text-lg font-semibold tracking-tight flex items-center gap-2">
+          Proyectos de Equipo
+          <ModuleHelpButton module-name="projects" />
+        </h1>
         <p class="text-xs text-muted-foreground">Proyectos de organizaciones con tablero Kanban</p>
       </div>
       <Button size="sm" @click="showCreateDialog = true">Nuevo Proyecto</Button>

@@ -203,7 +203,10 @@ const groupedConfigs = computed(() => {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-xl font-semibold tracking-tight">Notificaciones</h1>
+        <h1 class="text-xl font-semibold tracking-tight flex items-center gap-2">
+          Notificaciones
+          <ModuleHelpButton module-name="notifications" />
+        </h1>
         <p class="text-xs text-muted-foreground">Gestion de notificaciones y configuracion de eventos</p>
       </div>
       <div class="flex gap-2">

@@ -238,9 +238,7 @@ const getRoleBadgeVariant = (role: string) => {
   switch (role) {
     case 'super_admin':
       return 'destructive'
-    case 'owner':
-      return 'default'
-    case 'employee':
+    case 'user':
       return 'secondary'
     default:
       return 'outline'
@@ -252,10 +250,8 @@ const getRoleText = (role: string) => {
   switch (role) {
     case 'super_admin':
       return 'Super Admin'
-    case 'owner':
-      return 'Dueño'
-    case 'employee':
-      return 'Empleado'
+    case 'user':
+      return 'Usuario'
     default:
       return role
   }
@@ -319,8 +315,7 @@ const getRoleText = (role: string) => {
             <SelectContent>
               <SelectItem value="all">Todos los roles</SelectItem>
               <SelectItem value="super_admin">Super Admin</SelectItem>
-              <SelectItem value="owner">Dueño</SelectItem>
-              <SelectItem value="employee">Empleado</SelectItem>
+              <SelectItem value="user">Usuario</SelectItem>
             </SelectContent>
           </Select>
         </div>

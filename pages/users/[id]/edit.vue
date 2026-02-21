@@ -42,7 +42,7 @@ const validationSchema = z.object({
     /^\+?[1-9]\d{1,14}$/,
     'El teléfono debe estar en formato internacional (ej: +17868391882)'
   ),
-  roles: z.array(z.enum(['client', 'admin', 'super_admin']))
+  roles: z.array(z.enum(['user', 'super_admin']))
     .min(1, 'El usuario debe tener al menos un rol'),
   isActive: z.boolean().default(true),
   emailVerified: z.boolean().optional(),
@@ -127,8 +127,7 @@ const formFields = computed<FormFieldConfig[]>(() => [
     label: 'Roles',
     type: 'checkboxGroup',
     options: [
-      { value: 'client', label: 'Cliente' },
-      { value: 'admin', label: 'Administrador' },
+      { value: 'user', label: 'Usuario' },
       { value: 'super_admin', label: 'Super Administrador' },
     ],
     description: 'Seleccione los roles del usuario (puede tener múltiples)',
@@ -163,7 +162,7 @@ const initialValues = ref({
   firstName: '',
   lastName: '',
   phone: '',
-  roles: ['client'] as string[],
+  roles: ['user'] as string[],
   isActive: true,
   emailVerified: false,
   phoneVerified: false,
@@ -188,7 +187,7 @@ onMounted(async () => {
       }
 
       // Normalizar roles: puede venir como array, string separado por comas, o undefined
-      let userRoles: string[] = ['client']
+      let userRoles: string[] = ['user']
       const rolesValue = user.roles as unknown
       if (rolesValue) {
         if (Array.isArray(rolesValue)) {
