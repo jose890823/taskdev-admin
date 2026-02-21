@@ -9,6 +9,11 @@ import type {
 } from '../types'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 
+const getApiUrl = () => {
+  const config = useRuntimeConfig()
+  return config.public.apiUrl as string
+}
+
 /**
  * Composable para gestionar cache Redis desde el admin
  */
@@ -74,7 +79,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<CacheStatsResponse>('/api/admin/cache/stats', {
+      const response = await fetchWithAuth<CacheStatsResponse>(`${getApiUrl()}/admin/cache/stats`, {
         method: 'GET',
       })
 
@@ -100,7 +105,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<CacheHealthResponse>('/api/admin/cache/health', {
+      const response = await fetchWithAuth<CacheHealthResponse>(`${getApiUrl()}/admin/cache/health`, {
         method: 'GET',
       })
 
@@ -126,7 +131,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<CacheKeysResponse>(`/api/admin/cache/keys/${encodeURIComponent(pattern)}`, {
+      const response = await fetchWithAuth<CacheKeysResponse>(`${getApiUrl()}/admin/cache/keys/${encodeURIComponent(pattern)}`, {
         method: 'GET',
       })
 
@@ -156,7 +161,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; message?: string }>('/api/admin/cache/invalidate', {
+      const response = await fetchWithAuth<{ success: boolean; message?: string }>(`${getApiUrl()}/admin/cache/invalidate`, {
         method: 'POST',
         body: { pattern },
       })
@@ -179,7 +184,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; message?: string }>('/api/admin/cache/flush', {
+      const response = await fetchWithAuth<{ success: boolean; message?: string }>(`${getApiUrl()}/admin/cache/flush`, {
         method: 'POST',
       })
 

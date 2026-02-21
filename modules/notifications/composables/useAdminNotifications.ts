@@ -10,6 +10,11 @@ import type {
 } from '../types'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 
+const getApiUrl = () => {
+  const config = useRuntimeConfig()
+  return config.public.apiUrl as string
+}
+
 export const useAdminNotifications = () => {
   const { accessToken, refreshAccessToken, logout } = useAuth()
 
@@ -50,7 +55,7 @@ export const useAdminNotifications = () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetchWithAuth<any>('/api/admin/notifications', {
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/notifications`, {
         method: 'POST',
         body: data,
       })
@@ -68,7 +73,7 @@ export const useAdminNotifications = () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetchWithAuth<any>('/api/admin/notifications/broadcast', {
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/notifications/broadcast`, {
         method: 'POST',
         body: data,
       })
@@ -93,7 +98,7 @@ export const useAdminNotifications = () => {
         ...(query?.status && { status: query.status }),
         ...(query?.isRead !== undefined && { isRead: query.isRead }),
       }
-      const response = await fetchWithAuth<any>(`/api/admin/notifications/user/${userId}`, {
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/notifications/user/${userId}`, {
         method: 'GET',
         params,
       })
@@ -120,7 +125,7 @@ export const useAdminNotifications = () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetchWithAuth<any>('/api/admin/notifications/clean-expired', {
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/notifications/clean-expired`, {
         method: 'POST',
       })
       if (response.success) return response.data

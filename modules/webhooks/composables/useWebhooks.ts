@@ -9,6 +9,11 @@ import type {
 } from '../types'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 
+const getApiUrl = () => {
+  const config = useRuntimeConfig()
+  return config.public.apiUrl as string
+}
+
 /**
  * Composable para gestionar webhook events
  */
@@ -82,7 +87,7 @@ export const useWebhooks = () => {
         ...(filters?.eventType && { eventType: filters.eventType }),
       }
 
-      const response = await fetchWithAuth<WebhookEventListResponse>('/api/admin/webhooks/events', {
+      const response = await fetchWithAuth<WebhookEventListResponse>(`${getApiUrl()}/admin/webhooks/events`, {
         method: 'GET',
         params,
       })
@@ -117,7 +122,7 @@ export const useWebhooks = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<WebhookEventResponse>(`/api/admin/webhooks/events/${id}`, {
+      const response = await fetchWithAuth<WebhookEventResponse>(`${getApiUrl()}/admin/webhooks/events/${id}`, {
         method: 'GET',
       })
 
@@ -144,7 +149,7 @@ export const useWebhooks = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<WebhookEventResponse>(`/api/admin/webhooks/events/${id}/retry`, {
+      const response = await fetchWithAuth<WebhookEventResponse>(`${getApiUrl()}/admin/webhooks/events/${id}/retry`, {
         method: 'POST',
       })
 
@@ -173,7 +178,7 @@ export const useWebhooks = () => {
    */
   const fetchStats = async (): Promise<WebhookStats | null> => {
     try {
-      const response = await fetchWithAuth<WebhookStatsResponse>('/api/admin/webhooks/stats', {
+      const response = await fetchWithAuth<WebhookStatsResponse>(`${getApiUrl()}/admin/webhooks/stats`, {
         method: 'GET',
       })
 
@@ -197,7 +202,7 @@ export const useWebhooks = () => {
     error.value = null
 
     try {
-      await fetchWithAuth('/api/admin/webhooks/cleanup', {
+      await fetchWithAuth(`${getApiUrl()}/admin/webhooks/cleanup`, {
         method: 'DELETE',
       })
 

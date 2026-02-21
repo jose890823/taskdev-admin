@@ -9,6 +9,11 @@ import type {
 } from '../types'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 
+const getApiUrl = () => {
+  const config = useRuntimeConfig()
+  return config.public.apiUrl as string
+}
+
 /**
  * Composable para gestionar Background Jobs
  */
@@ -86,7 +91,7 @@ export const useJobs = () => {
         ...(filters?.status && { status: filters.status }),
       }
 
-      const response = await fetchWithAuth<JobExecutionListResponse>('/api/admin/jobs/executions', {
+      const response = await fetchWithAuth<JobExecutionListResponse>(`${getApiUrl()}/admin/jobs/executions`, {
         method: 'GET',
         params,
       })
@@ -121,7 +126,7 @@ export const useJobs = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; data: JobExecution }>(`/api/admin/jobs/executions/${id}`, {
+      const response = await fetchWithAuth<{ success: boolean; data: JobExecution }>(`${getApiUrl()}/admin/jobs/executions/${id}`, {
         method: 'GET',
       })
 
@@ -152,7 +157,7 @@ export const useJobs = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<JobStatusResponse>('/api/admin/jobs/status', {
+      const response = await fetchWithAuth<JobStatusResponse>(`${getApiUrl()}/admin/jobs/status`, {
         method: 'GET',
       })
 
@@ -185,7 +190,7 @@ export const useJobs = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; data: any; message?: string }>('/api/admin/jobs/trigger', {
+      const response = await fetchWithAuth<{ success: boolean; data: any; message?: string }>(`${getApiUrl()}/admin/jobs/trigger`, {
         method: 'POST',
         body: data,
       })
@@ -208,7 +213,7 @@ export const useJobs = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; message?: string }>('/api/admin/jobs/executions/cleanup', {
+      const response = await fetchWithAuth<{ success: boolean; message?: string }>(`${getApiUrl()}/admin/jobs/executions/cleanup`, {
         method: 'DELETE',
       })
 

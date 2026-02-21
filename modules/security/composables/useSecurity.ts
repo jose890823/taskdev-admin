@@ -16,6 +16,11 @@ import type {
 } from '../types'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 
+const getApiUrl = () => {
+  const config = useRuntimeConfig()
+  return config.public.apiUrl as string
+}
+
 export const useSecurity = () => {
   const { accessToken, refreshAccessToken, logout } = useAuth()
 
@@ -60,7 +65,7 @@ export const useSecurity = () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetchWithAuth<SecurityDashboardResponse>('/api/admin/security/dashboard', { method: 'GET' })
+      const response = await fetchWithAuth<SecurityDashboardResponse>(`${getApiUrl()}/admin/security/dashboard`, { method: 'GET' })
       if (response.success && response.data) {
         dashboard.value = response.data
         return response.data
@@ -91,7 +96,7 @@ export const useSecurity = () => {
         ...(filters?.sortBy && { sortBy: filters.sortBy }),
         ...(filters?.sortOrder && { sortOrder: filters.sortOrder }),
       }
-      const response = await fetchWithAuth<SecurityEventListResponse>('/api/admin/security/events', { method: 'GET', params })
+      const response = await fetchWithAuth<SecurityEventListResponse>(`${getApiUrl()}/admin/security/events`, { method: 'GET', params })
       if (response.success && response.data) {
         events.value = Array.isArray(response.data) ? response.data : []
         total.value = response.pagination?.total || response.data?.length || 0
@@ -112,7 +117,7 @@ export const useSecurity = () => {
 
   const reviewEvent = async (id: string, data: ReviewEventDto) => {
     try {
-      const response = await fetchWithAuth<any>(`/api/admin/security/events/${id}/review`, { method: 'PATCH', body: data })
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/security/events/${id}/review`, { method: 'PATCH', body: data })
       if (response.success && response.data) {
         const index = events.value.findIndex((e) => e.id === id)
         if (index !== -1) events.value[index] = response.data
@@ -129,7 +134,7 @@ export const useSecurity = () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetchWithAuth<any>('/api/admin/security/blocked-ips', { method: 'GET' })
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/security/blocked-ips`, { method: 'GET' })
       if (response.success && response.data) {
         blockedIps.value = Array.isArray(response.data) ? response.data : []
       }
@@ -144,7 +149,7 @@ export const useSecurity = () => {
 
   const blockIp = async (data: BlockIpDto) => {
     try {
-      const response = await fetchWithAuth<any>('/api/admin/security/blocked-ips', { method: 'POST', body: data })
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/security/blocked-ips`, { method: 'POST', body: data })
       if (response.success) await fetchBlockedIps()
       return response
     } catch (e: any) {
@@ -155,7 +160,7 @@ export const useSecurity = () => {
 
   const unblockIp = async (ip: string) => {
     try {
-      const response = await fetchWithAuth<any>(`/api/admin/security/blocked-ips/${encodeURIComponent(ip)}`, { method: 'DELETE' })
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/security/blocked-ips/${encodeURIComponent(ip)}`, { method: 'DELETE' })
       blockedIps.value = blockedIps.value.filter((b) => b.ipAddress !== ip)
       return response
     } catch (e: any) {
@@ -169,7 +174,7 @@ export const useSecurity = () => {
     loading.value = true
     error.value = null
     try {
-      const url = category ? `/api/admin/security/config/${category}` : '/api/admin/security/config'
+      const url = category ? `${getApiUrl()}/admin/security/config/${category}` : `${getApiUrl()}/admin/security/config`
       const response = await fetchWithAuth<any>(url, { method: 'GET' })
       if (response.success && response.data) {
         configs.value = Array.isArray(response.data) ? response.data : []
@@ -185,7 +190,7 @@ export const useSecurity = () => {
 
   const updateConfig = async (data: UpdateSecurityConfigDto) => {
     try {
-      const response = await fetchWithAuth<any>('/api/admin/security/config', { method: 'PATCH', body: data })
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/security/config`, { method: 'PATCH', body: data })
       if (response.success && response.data) {
         const index = configs.value.findIndex((c) => c.key === data.key)
         if (index !== -1) configs.value[index] = response.data
@@ -205,7 +210,7 @@ export const useSecurity = () => {
       const params: Record<string, any> = {}
       if (filters?.status) params.status = filters.status
       if (filters?.severity) params.severity = filters.severity
-      const response = await fetchWithAuth<any>('/api/admin/security/alerts', { method: 'GET', params })
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/security/alerts`, { method: 'GET', params })
       if (response.success && response.data) {
         alerts.value = Array.isArray(response.data) ? response.data : []
       }
@@ -220,7 +225,7 @@ export const useSecurity = () => {
 
   const updateAlertStatus = async (id: string, data: UpdateAlertStatusDto) => {
     try {
-      const response = await fetchWithAuth<any>(`/api/admin/security/alerts/${id}/status`, { method: 'PATCH', body: data })
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/admin/security/alerts/${id}/status`, { method: 'PATCH', body: data })
       if (response.success && response.data) {
         const index = alerts.value.findIndex((a) => a.id === id)
         if (index !== -1) alerts.value[index] = response.data
@@ -235,7 +240,7 @@ export const useSecurity = () => {
   // Sessions
   const revokeUserSessions = async (userId: string) => {
     try {
-      return await fetchWithAuth<any>(`/api/admin/security/sessions/user/${userId}`, { method: 'DELETE' })
+      return await fetchWithAuth<any>(`${getApiUrl()}/admin/security/sessions/user/${userId}`, { method: 'DELETE' })
     } catch (e: any) {
       error.value = e.data?.message || e.message || 'Error al revocar sesiones'
       throw e
@@ -245,7 +250,7 @@ export const useSecurity = () => {
   // Maintenance
   const runCleanup = async () => {
     try {
-      return await fetchWithAuth<any>('/api/admin/security/maintenance/cleanup', { method: 'POST' })
+      return await fetchWithAuth<any>(`${getApiUrl()}/admin/security/maintenance/cleanup`, { method: 'POST' })
     } catch (e: any) {
       error.value = e.data?.message || e.message || 'Error al ejecutar limpieza'
       throw e

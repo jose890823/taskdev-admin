@@ -9,6 +9,11 @@ import type {
 } from '../types'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 
+const getApiUrl = () => {
+  const config = useRuntimeConfig()
+  return config.public.apiUrl as string
+}
+
 /**
  * Composable para gestionar Feature Flags
  */
@@ -78,7 +83,7 @@ export const useFeatureFlags = () => {
       }
 
       const response = await fetchWithAuth<FeatureFlagListResponse>(
-        '/api/admin/feature-flags',
+        `${getApiUrl()}/admin/feature-flags`,
         {
           method: 'GET',
           params,
@@ -115,7 +120,7 @@ export const useFeatureFlags = () => {
 
     try {
       const response = await fetchWithAuth<FeatureFlagResponse>(
-        `/api/admin/feature-flags/${key}`,
+        `${getApiUrl()}/admin/feature-flags/${key}`,
         {
           method: 'GET',
         }
@@ -145,7 +150,7 @@ export const useFeatureFlags = () => {
 
     try {
       const response = await fetchWithAuth<FeatureFlagResponse>(
-        '/api/admin/feature-flags',
+        `${getApiUrl()}/admin/feature-flags`,
         {
           method: 'POST',
           body: data,
@@ -177,7 +182,7 @@ export const useFeatureFlags = () => {
 
     try {
       const response = await fetchWithAuth<FeatureFlagResponse>(
-        `/api/admin/feature-flags/${id}`,
+        `${getApiUrl()}/admin/feature-flags/${id}`,
         {
           method: 'PATCH',
           body: data,
@@ -212,7 +217,7 @@ export const useFeatureFlags = () => {
 
     try {
       const response = await fetchWithAuth<{ success: boolean; message?: string }>(
-        `/api/admin/feature-flags/${id}`,
+        `${getApiUrl()}/admin/feature-flags/${id}`,
         {
           method: 'DELETE',
         }
@@ -242,7 +247,7 @@ export const useFeatureFlags = () => {
 
     try {
       const response = await fetchWithAuth<FeatureFlagResponse>(
-        `/api/admin/feature-flags/${id}`,
+        `${getApiUrl()}/admin/feature-flags/${id}`,
         {
           method: 'PATCH',
           body: { isEnabled },

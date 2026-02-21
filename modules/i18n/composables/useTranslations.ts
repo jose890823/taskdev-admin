@@ -12,6 +12,11 @@ import type {
 } from '../types'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 
+const getApiUrl = () => {
+  const config = useRuntimeConfig()
+  return config.public.apiUrl as string
+}
+
 /**
  * Composable para gestionar traducciones i18n
  */
@@ -87,7 +92,7 @@ export const useTranslations = () => {
       }
 
       const response = await fetchWithAuth<TranslationListResponse>(
-        '/api/admin/i18n/translations',
+        `${getApiUrl()}/admin/i18n/translations`,
         {
           method: 'GET',
           params,
@@ -127,7 +132,7 @@ export const useTranslations = () => {
 
     try {
       const response = await fetchWithAuth<TranslationResponse>(
-        `/api/admin/i18n/translations/${id}`,
+        `${getApiUrl()}/admin/i18n/translations/${id}`,
         {
           method: 'GET',
         }
@@ -157,7 +162,7 @@ export const useTranslations = () => {
 
     try {
       const response = await fetchWithAuth<TranslationResponse>(
-        '/api/admin/i18n/translations',
+        `${getApiUrl()}/admin/i18n/translations`,
         {
           method: 'POST',
           body: data,
@@ -189,7 +194,7 @@ export const useTranslations = () => {
 
     try {
       const response = await fetchWithAuth<TranslationResponse>(
-        `/api/admin/i18n/translations/${id}`,
+        `${getApiUrl()}/admin/i18n/translations/${id}`,
         {
           method: 'PUT',
           body: data,
@@ -224,7 +229,7 @@ export const useTranslations = () => {
 
     try {
       const response = await fetchWithAuth<{ success: boolean; message?: string }>(
-        `/api/admin/i18n/translations/${id}`,
+        `${getApiUrl()}/admin/i18n/translations/${id}`,
         {
           method: 'DELETE',
         }
@@ -259,7 +264,7 @@ export const useTranslations = () => {
 
     try {
       const response = await fetchWithAuth<{ success: boolean; message?: string }>(
-        '/api/admin/i18n/translations/import',
+        `${getApiUrl()}/admin/i18n/translations/import`,
         {
           method: 'POST',
           body: data,
@@ -285,7 +290,7 @@ export const useTranslations = () => {
 
     try {
       const response = await fetchWithAuth<any>(
-        `/api/admin/i18n/export/${locale}`,
+        `${getApiUrl()}/admin/i18n/export/${locale}`,
         {
           method: 'GET',
         }
@@ -310,7 +315,7 @@ export const useTranslations = () => {
 
     try {
       const response = await fetchWithAuth<{ success: boolean; message?: string }>(
-        '/api/admin/i18n/reload-cache',
+        `${getApiUrl()}/admin/i18n/reload-cache`,
         {
           method: 'POST',
         }
@@ -334,7 +339,7 @@ export const useTranslations = () => {
 
     try {
       const response = await fetchWithAuth<{ success: boolean; data: TranslationStats }>(
-        '/api/admin/i18n/stats',
+        `${getApiUrl()}/admin/i18n/stats`,
         {
           method: 'GET',
         }
