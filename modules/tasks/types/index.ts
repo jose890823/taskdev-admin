@@ -73,6 +73,7 @@ export interface UpdateTaskDto {
   statusId?: string
   assignedToId?: string | null
   assignedToIds?: string[]
+  moduleId?: string | null
   priority?: TaskPriority
   scheduledDate?: string
   dueDate?: string

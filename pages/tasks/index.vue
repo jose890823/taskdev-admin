@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, reactive } from 'vue'
 import { useTasks } from '~/modules/tasks/composables/useTasks'
 import { useProjects } from '~/modules/projects/composables/useProjects'
+import { useAuth } from '~/modules/auth/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -13,6 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '~/components/ui/select'
+import type { ProjectModule } from '~/modules/projects/types'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -80,10 +82,69 @@ const filteredTasks = computed(() => {
 const showCreateDialog = ref(false)
 const newTaskTitle = ref('')
 const newTaskDescription = ref('')
-const newTaskProjectId = ref('none')
-const newTaskModuleId = ref('none')
 const newTaskPriority = ref<string>('medium')
 const newTaskDueDate = ref('')
+
+// ── Explorer state ──
+const selectedProjectId = ref<string | null>(null)
+const selectedModuleIds = ref<string[]>([])
+
+const findModuleInTree = (modules: ProjectModule[], id: string): ProjectModule | null => {
+  for (const m of modules) {
+    if (m.id === id) return m
+    if (m.children?.length) {
+      const found = findModuleInTree(m.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const rootModules = computed(() => projectModules.value)
+
+const level1Children = computed(() => {
+  if (!selectedModuleIds.value[0]) return []
+  const root = findModuleInTree(projectModules.value, selectedModuleIds.value[0])
+  return root?.children || []
+})
+
+const level2Children = computed(() => {
+  if (!selectedModuleIds.value[1]) return []
+  const parent = findModuleInTree(projectModules.value, selectedModuleIds.value[1])
+  return parent?.children || []
+})
+
+const selectProject = async (projectId: string | null) => {
+  selectedProjectId.value = projectId
+  selectedModuleIds.value = []
+  if (projectId) {
+    await fetchModules(projectId)
+  }
+}
+
+const selectModule = (moduleId: string, level: number) => {
+  const newIds = selectedModuleIds.value.slice(0, level)
+  newIds[level] = moduleId
+  selectedModuleIds.value = newIds
+}
+
+const selectionBreadcrumb = computed(() => {
+  const parts: string[] = []
+  if (selectedProjectId.value) {
+    const proj = projects.value.find(p => p.id === selectedProjectId.value)
+    if (proj) parts.push(proj.name)
+  }
+  for (const moduleId of selectedModuleIds.value) {
+    const mod = findModuleInTree(projectModules.value, moduleId)
+    if (mod) parts.push(mod.name)
+  }
+  return parts
+})
+
+const clearExplorerSelection = () => {
+  selectedProjectId.value = null
+  selectedModuleIds.value = []
+}
 
 const priorities = [
   { value: 'low', label: 'Baja', class: 'bg-gray-500 text-white hover:bg-gray-600' },
@@ -106,10 +167,57 @@ const priorityLabel: Record<string, string> = {
   urgent: 'Urgente',
 }
 
+// ── Module tree cache for breadcrumbs ──
+const { accessToken } = useAuth()
+const config = useRuntimeConfig()
+const apiUrl = config.public.apiUrl as string
+const moduleTreeCache = reactive<Record<string, ProjectModule[]>>({})
+
+const loadModuleTrees = async () => {
+  const projectIds = [...new Set(
+    tasks.value.filter(t => t.moduleId && t.projectId).map(t => t.projectId!),
+  )]
+  const toFetch = projectIds.filter(pid => !moduleTreeCache[pid])
+  if (!toFetch.length) return
+
+  await Promise.all(toFetch.map(async (pid) => {
+    try {
+      const res = await $fetch<{ success: boolean; data: ProjectModule[] }>(`${apiUrl}/projects/${pid}/modules`, {
+        headers: { Authorization: `Bearer ${accessToken.value}` },
+      })
+      moduleTreeCache[pid] = res.data
+    } catch {
+      moduleTreeCache[pid] = []
+    }
+  }))
+}
+
+watch(tasks, () => loadModuleTrees())
+
+const buildModulePath = (modules: ProjectModule[], targetId: string, path: string[]): string[] | null => {
+  for (const m of modules) {
+    if (m.id === targetId) return [...path, m.name]
+    if (m.children?.length) {
+      const found = buildModulePath(m.children, targetId, [...path, m.name])
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const getModuleBreadcrumb = (task: Task): string[] => {
+  if (!task.moduleId || !task.projectId) return []
+  const tree = moduleTreeCache[task.projectId]
+  if (!tree) return []
+  return buildModulePath(tree, task.moduleId, []) || []
+}
+
 // ── Table columns ──
 const columns: ColumnDef<Task>[] = [
   { key: 'status', label: '', width: '40px', sortable: false, searchable: false },
   { key: 'title', label: 'Titulo', sortable: true, searchable: true },
+  { key: 'systemCode', label: 'Codigo', sortable: true, width: '200px', searchable: true },
+  { key: 'module', label: 'Modulo', sortable: false, searchable: false, width: '200px' },
   { key: 'priority', label: 'Prioridad', sortable: true, width: '120px', align: 'center' },
   { key: 'type', label: 'Tipo', sortable: true, width: '100px', align: 'center' },
   {
@@ -138,13 +246,25 @@ const handleDelete = async (task: Task) => {
   toast.success('Tarea eliminada')
 }
 
-// Load modules when project changes
-watch(newTaskProjectId, async (projectId) => {
-  newTaskModuleId.value = 'none'
-  if (projectId && projectId !== 'none') {
-    await fetchModules(projectId)
+const copyCode = (code: string) => {
+  try {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = code
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    toast.success('Codigo copiado')
+  } catch {
+    toast.error('No se pudo copiar')
   }
-})
+}
 
 onMounted(async () => {
   await fetchProjects()
@@ -160,11 +280,15 @@ onMounted(async () => {
 const handleCreate = async () => {
   if (!newTaskTitle.value.trim()) return
 
+  const lastModuleId = selectedModuleIds.value.length
+    ? selectedModuleIds.value[selectedModuleIds.value.length - 1]
+    : undefined
+
   const task = await create({
     title: newTaskTitle.value,
     description: newTaskDescription.value || undefined,
-    projectId: newTaskProjectId.value === 'none' ? undefined : newTaskProjectId.value,
-    moduleId: newTaskModuleId.value === 'none' ? undefined : newTaskModuleId.value,
+    projectId: selectedProjectId.value || undefined,
+    moduleId: lastModuleId,
     priority: newTaskPriority.value as any,
     dueDate: newTaskDueDate.value || undefined,
   })
@@ -174,8 +298,8 @@ const handleCreate = async () => {
     showCreateDialog.value = false
     newTaskTitle.value = ''
     newTaskDescription.value = ''
-    newTaskProjectId.value = 'none'
-    newTaskModuleId.value = 'none'
+    selectedProjectId.value = null
+    selectedModuleIds.value = []
     newTaskPriority.value = 'medium'
     newTaskDueDate.value = ''
   } else {
@@ -188,7 +312,10 @@ const handleCreate = async () => {
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-lg font-semibold tracking-tight">Tareas</h1>
+        <h1 class="text-lg font-semibold tracking-tight flex items-center gap-2">
+          Tareas
+          <ModuleHelpButton module-name="tasks" />
+        </h1>
         <p class="text-xs text-muted-foreground">Todas tus tareas</p>
       </div>
       <div class="flex gap-2">
@@ -273,14 +400,37 @@ const handleCreate = async () => {
         </div>
       </template>
 
+      <!-- System code with copy -->
+      <template #cell-systemCode="{ row }">
+        <div v-if="row.systemCode" class="flex items-center gap-1">
+          <span class="text-xs text-muted-foreground font-mono">{{ row.systemCode }}</span>
+          <button
+            type="button"
+            class="invisible group-hover/row:visible p-0.5 rounded hover:bg-muted"
+            @click.stop.prevent="copyCode(row.systemCode)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </button>
+        </div>
+        <span v-else class="text-xs text-muted-foreground">-</span>
+      </template>
+
       <!-- Title with strikethrough if completed -->
       <template #cell-title="{ row }">
-        <div class="flex items-center gap-1.5">
-          <span :class="{ 'line-through text-muted-foreground': row.completedAt }">
-            {{ row.title }}
+        <span :class="{ 'line-through text-muted-foreground': row.completedAt }">
+          {{ row.title }}
+        </span>
+      </template>
+
+      <!-- Module breadcrumb -->
+      <template #cell-module="{ row }">
+        <div v-if="getModuleBreadcrumb(row).length" class="flex items-center gap-0.5 text-xs text-muted-foreground truncate">
+          <span v-for="(part, i) in getModuleBreadcrumb(row)" :key="i" class="flex items-center gap-0.5 min-w-0">
+            <svg v-if="i > 0" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 opacity-40"><path d="m9 18 6-6-6-6"/></svg>
+            <span class="truncate" :class="i === getModuleBreadcrumb(row).length - 1 ? 'text-foreground' : ''">{{ part }}</span>
           </span>
-          <span v-if="row.systemCode" class="text-[10px] text-muted-foreground font-mono shrink-0">{{ row.systemCode }}</span>
         </div>
+        <span v-else class="text-xs text-muted-foreground">-</span>
       </template>
 
       <!-- Priority badge -->
@@ -340,30 +490,117 @@ const handleCreate = async () => {
             <Label>Descripcion (opcional)</Label>
             <RichTextEditor v-model="newTaskDescription" placeholder="Describe la tarea en detalle..." :rows="8" />
           </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-2">
-              <Label>Proyecto (opcional)</Label>
-              <Select v-model="newTaskProjectId">
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin proyecto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin proyecto</SelectItem>
-                  <SelectItem v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</SelectItem>
-                </SelectContent>
-              </Select>
+          <!-- Explorer de columnas: Proyecto / Modulo -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <Label>Proyecto / Modulo (opcional)</Label>
+              <button
+                v-if="selectedProjectId"
+                type="button"
+                class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                @click="clearExplorerSelection"
+              >
+                Limpiar seleccion
+              </button>
             </div>
-            <div class="space-y-2">
-              <Label>Modulo (opcional)</Label>
-              <Select v-model="newTaskModuleId" :disabled="newTaskProjectId === 'none'">
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin modulo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin modulo</SelectItem>
-                  <SelectItem v-for="m in projectModules" :key="m.id" :value="m.id">{{ m.name }}</SelectItem>
-                </SelectContent>
-              </Select>
+            <div class="border rounded-lg overflow-hidden">
+              <div class="flex overflow-x-auto" style="height: 200px;">
+                <!-- Columna: Proyectos -->
+                <div class="min-w-[170px] max-w-[170px] border-r flex flex-col">
+                  <div class="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 border-b shrink-0">
+                    Proyectos
+                  </div>
+                  <div class="overflow-y-auto flex-1">
+                    <button
+                      v-for="p in projects"
+                      :key="p.id"
+                      type="button"
+                      class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent/50 transition-colors"
+                      :class="selectedProjectId === p.id ? 'bg-accent text-accent-foreground font-medium' : ''"
+                      @click="selectProject(p.id)"
+                    >
+                      <div v-if="p.color" class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: p.color }" />
+                      <span class="truncate flex-1">{{ p.name }}</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                    <div v-if="!projects.length" class="px-3 py-4 text-xs text-muted-foreground text-center">
+                      Sin proyectos
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Columna: Modulos raiz -->
+                <div v-if="selectedProjectId" class="min-w-[170px] max-w-[170px] border-r flex flex-col">
+                  <div class="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 border-b shrink-0">
+                    Modulos
+                  </div>
+                  <div class="overflow-y-auto flex-1">
+                    <button
+                      v-for="m in rootModules"
+                      :key="m.id"
+                      type="button"
+                      class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent/50 transition-colors"
+                      :class="selectedModuleIds[0] === m.id ? 'bg-accent text-accent-foreground font-medium' : ''"
+                      @click="selectModule(m.id, 0)"
+                    >
+                      <div v-if="m.color" class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: m.color }" />
+                      <span class="truncate flex-1">{{ m.name }}</span>
+                      <svg v-if="m.children?.length" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                    <div v-if="!rootModules.length" class="px-3 py-4 text-xs text-muted-foreground text-center">
+                      Sin modulos
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Columna: Sub-nivel 1 -->
+                <div v-if="level1Children.length" class="min-w-[170px] max-w-[170px] border-r flex flex-col">
+                  <div class="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 border-b shrink-0 truncate">
+                    {{ findModuleInTree(projectModules, selectedModuleIds[0])?.name }}
+                  </div>
+                  <div class="overflow-y-auto flex-1">
+                    <button
+                      v-for="m in level1Children"
+                      :key="m.id"
+                      type="button"
+                      class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent/50 transition-colors"
+                      :class="selectedModuleIds[1] === m.id ? 'bg-accent text-accent-foreground font-medium' : ''"
+                      @click="selectModule(m.id, 1)"
+                    >
+                      <div v-if="m.color" class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: m.color }" />
+                      <span class="truncate flex-1">{{ m.name }}</span>
+                      <svg v-if="m.children?.length" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Columna: Sub-nivel 2 -->
+                <div v-if="level2Children.length" class="min-w-[170px] max-w-[170px] flex flex-col">
+                  <div class="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 border-b shrink-0 truncate">
+                    {{ findModuleInTree(projectModules, selectedModuleIds[1])?.name }}
+                  </div>
+                  <div class="overflow-y-auto flex-1">
+                    <button
+                      v-for="m in level2Children"
+                      :key="m.id"
+                      type="button"
+                      class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent/50 transition-colors"
+                      :class="selectedModuleIds[2] === m.id ? 'bg-accent text-accent-foreground font-medium' : ''"
+                      @click="selectModule(m.id, 2)"
+                    >
+                      <div v-if="m.color" class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: m.color }" />
+                      <span class="truncate flex-1">{{ m.name }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Breadcrumb -->
+            <div v-if="selectionBreadcrumb.length" class="flex items-center gap-1 text-xs text-muted-foreground">
+              <span v-for="(part, i) in selectionBreadcrumb" :key="i" class="flex items-center gap-1">
+                <svg v-if="i > 0" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                <span :class="i === selectionBreadcrumb.length - 1 ? 'text-foreground font-medium' : ''">{{ part }}</span>
+              </span>
             </div>
           </div>
           <div class="space-y-2">

@@ -19,6 +19,7 @@ import {
 import DataTable from '~/components/shared/DataTable/DataTable.vue'
 import type { ColumnDef } from '~/components/shared/DataTable/types'
 import type { Task } from '~/modules/tasks/types'
+import type { ProjectModule } from '~/modules/projects/types'
 
 definePageMeta({
   middleware: ['auth', 'module-access'],
@@ -284,6 +285,8 @@ const clearTaskFilters = () => {
 const taskColumns: ColumnDef<Task>[] = [
   { key: 'status', label: '', width: '40px', sortable: false, searchable: false },
   { key: 'title', label: 'Titulo', sortable: true, searchable: true },
+  { key: 'systemCode', label: 'Codigo', sortable: true, width: '200px', searchable: true },
+  { key: 'module', label: 'Modulo', sortable: false, searchable: false, width: '180px' },
   { key: 'assignees', label: 'Asignados', width: '160px', sortable: false },
   { key: 'priority', label: 'Prioridad', sortable: true, width: '100px', align: 'center' },
   { key: 'statusName', label: 'Estado', sortable: false, width: '120px', align: 'center' },
@@ -308,6 +311,22 @@ const getAssigneeInitials = (assignee: { firstName: string; lastName: string }) 
   return ((assignee.firstName?.[0] || '') + (assignee.lastName?.[0] || '')).toUpperCase() || '?'
 }
 
+const buildModulePath = (modules: ProjectModule[], targetId: string, path: string[]): string[] | null => {
+  for (const m of modules) {
+    if (m.id === targetId) return [...path, m.name]
+    if (m.children?.length) {
+      const found = buildModulePath(m.children, targetId, [...path, m.name])
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const getModuleBreadcrumb = (task: Task): string[] => {
+  if (!task.moduleId) return []
+  return buildModulePath(projectModules.value, task.moduleId, []) || []
+}
+
 const handleDeleteTask = async (task: Task) => {
   await removeTask(task.id)
   toast.success('Tarea eliminada')
@@ -315,6 +334,26 @@ const handleDeleteTask = async (task: Task) => {
 
 const handleTaskRowClick = (row: Task) => {
   router.push(`/tasks/${row.id}`)
+}
+
+const copyCode = (code: string) => {
+  try {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = code
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    toast.success('Codigo copiado')
+  } catch {
+    toast.error('No se pudo copiar')
+  }
 }
 
 // ── Helpers ──
@@ -778,12 +817,35 @@ onMounted(async () => {
 
               <!-- Title -->
               <template #cell-title="{ row }">
-                <div class="flex items-center gap-1.5">
-                  <span class="text-sm" :class="{ 'line-through text-muted-foreground': getTaskStatusInfo(row.statusId)?.isCompleted }">
-                    {{ row.title }}
-                  </span>
-                  <span v-if="row.systemCode" class="text-[10px] text-muted-foreground font-mono shrink-0">{{ row.systemCode }}</span>
+                <span class="text-sm" :class="{ 'line-through text-muted-foreground': getTaskStatusInfo(row.statusId)?.isCompleted }">
+                  {{ row.title }}
+                </span>
+              </template>
+
+              <!-- System code with copy -->
+              <template #cell-systemCode="{ row }">
+                <div v-if="row.systemCode" class="flex items-center gap-1">
+                  <span class="text-xs text-muted-foreground font-mono">{{ row.systemCode }}</span>
+                  <button
+                    type="button"
+                    class="invisible group-hover/row:visible p-0.5 rounded hover:bg-muted"
+                    @click.stop.prevent="copyCode(row.systemCode)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
                 </div>
+                <span v-else class="text-xs text-muted-foreground">-</span>
+              </template>
+
+              <!-- Module breadcrumb -->
+              <template #cell-module="{ row }">
+                <div v-if="getModuleBreadcrumb(row).length" class="flex items-center gap-0.5 text-xs text-muted-foreground truncate">
+                  <span v-for="(part, i) in getModuleBreadcrumb(row)" :key="i" class="flex items-center gap-0.5 min-w-0">
+                    <svg v-if="i > 0" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 opacity-40"><path d="m9 18 6-6-6-6"/></svg>
+                    <span class="truncate" :class="i === getModuleBreadcrumb(row).length - 1 ? 'text-foreground' : ''">{{ part }}</span>
+                  </span>
+                </div>
+                <span v-else class="text-xs text-muted-foreground">-</span>
               </template>
 
               <!-- Assignees -->

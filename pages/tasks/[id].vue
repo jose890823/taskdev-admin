@@ -23,6 +23,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '~/components/ui/select'
 import type { TaskAssignee } from '~/modules/tasks/types'
+import type { ProjectModule } from '~/modules/projects/types'
 
 definePageMeta({
   middleware: ['auth', 'module-access'],
@@ -46,8 +47,8 @@ const {
 } = useTasks()
 
 const {
-  taskStatuses, globalStatuses, projectMembers,
-  fetchStatuses, fetchGlobalStatuses, fetchMembers,
+  projects, projectModules, taskStatuses, globalStatuses, projectMembers,
+  fetchAll: fetchProjects, fetchModules, fetchStatuses, fetchGlobalStatuses, fetchMembers,
 } = useProjects()
 
 // All statuses (project or global depending on task type)
@@ -82,11 +83,147 @@ const priorityColor: Record<string, string> = {
   urgent: 'bg-red-500 text-white border-red-500',
 }
 
+// ── Module explorer state ──
+const showModuleExplorer = ref(false)
+const explorerProjectId = ref<string | null>(null)
+const explorerModuleIds = ref<string[]>([])
+
+const findModuleInTree = (modules: ProjectModule[], id: string): ProjectModule | null => {
+  for (const m of modules) {
+    if (m.id === id) return m
+    if (m.children?.length) {
+      const found = findModuleInTree(m.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const rootModules = computed(() => projectModules.value)
+
+const level1Children = computed(() => {
+  if (!explorerModuleIds.value[0]) return []
+  const root = findModuleInTree(projectModules.value, explorerModuleIds.value[0])
+  return root?.children || []
+})
+
+const level2Children = computed(() => {
+  if (!explorerModuleIds.value[1]) return []
+  const parent = findModuleInTree(projectModules.value, explorerModuleIds.value[1])
+  return parent?.children || []
+})
+
+const explorerSelectProject = async (projectId: string | null) => {
+  explorerProjectId.value = projectId
+  explorerModuleIds.value = []
+  if (projectId) {
+    await fetchModules(projectId)
+  }
+}
+
+const explorerSelectModule = (moduleId: string, level: number) => {
+  const newIds = explorerModuleIds.value.slice(0, level)
+  newIds[level] = moduleId
+  explorerModuleIds.value = newIds
+}
+
+const explorerBreadcrumb = computed(() => {
+  const parts: string[] = []
+  if (explorerProjectId.value) {
+    const proj = projects.value.find(p => p.id === explorerProjectId.value)
+    if (proj) parts.push(proj.name)
+  }
+  for (const moduleId of explorerModuleIds.value) {
+    const mod = findModuleInTree(projectModules.value, moduleId)
+    if (mod) parts.push(mod.name)
+  }
+  return parts
+})
+
+// Current module name for display
+const currentModuleName = computed(() => {
+  if (!currentTask.value?.moduleId) return null
+  const mod = findModuleInTree(projectModules.value, currentTask.value.moduleId)
+  return mod?.name || null
+})
+
+const currentProjectName = computed(() => {
+  if (!currentTask.value?.projectId) return null
+  return projects.value.find(p => p.id === currentTask.value?.projectId)?.name || null
+})
+
+// Build the full path for the current module (walking up the tree)
+const currentModulePath = computed(() => {
+  const parts: string[] = []
+  if (currentProjectName.value) parts.push(currentProjectName.value)
+  if (currentTask.value?.moduleId) {
+    // Walk from root to the target module
+    const buildPath = (modules: ProjectModule[], targetId: string, path: string[]): string[] | null => {
+      for (const m of modules) {
+        if (m.id === targetId) return [...path, m.name]
+        if (m.children?.length) {
+          const found = buildPath(m.children, targetId, [...path, m.name])
+          if (found) return found
+        }
+      }
+      return null
+    }
+    const modulePath = buildPath(projectModules.value, currentTask.value.moduleId, [])
+    if (modulePath) parts.push(...modulePath)
+  }
+  return parts
+})
+
+const openModuleExplorer = async () => {
+  showModuleExplorer.value = true
+  // Pre-select current project/module
+  if (currentTask.value?.projectId) {
+    explorerProjectId.value = currentTask.value.projectId
+    await fetchModules(currentTask.value.projectId)
+    // Pre-select module path
+    if (currentTask.value.moduleId) {
+      const buildSelectionPath = (modules: ProjectModule[], targetId: string, path: string[]): string[] | null => {
+        for (const m of modules) {
+          if (m.id === targetId) return [...path, m.id]
+          if (m.children?.length) {
+            const found = buildSelectionPath(m.children, targetId, [...path, m.id])
+            if (found) return found
+          }
+        }
+        return null
+      }
+      explorerModuleIds.value = buildSelectionPath(projectModules.value, currentTask.value.moduleId, []) || []
+    } else {
+      explorerModuleIds.value = []
+    }
+  } else {
+    explorerProjectId.value = null
+    explorerModuleIds.value = []
+  }
+}
+
+const saveModuleSelection = async () => {
+  const newModuleId = explorerModuleIds.value.length
+    ? explorerModuleIds.value[explorerModuleIds.value.length - 1]
+    : null
+  await update(taskId, { moduleId: newModuleId })
+  showModuleExplorer.value = false
+  toast.success('Modulo actualizado')
+}
+
+const clearModuleSelection = async () => {
+  await update(taskId, { moduleId: null })
+  explorerModuleIds.value = []
+  showModuleExplorer.value = false
+  toast.success('Modulo removido')
+}
+
 onMounted(async () => {
   await Promise.all([
     fetchById(taskId),
     fetchSubtasks(taskId),
     fetchComments(taskId),
+    fetchProjects(),
   ])
   // Set breadcrumb meta
   if (currentTask.value?.systemCode) {
@@ -96,11 +233,12 @@ onMounted(async () => {
       label: currentTask.value.title,
     })
   }
-  // Load statuses and members after we know the task
+  // Load statuses, members, and modules after we know the task
   if (currentTask.value?.projectId) {
     await Promise.all([
       fetchStatuses(currentTask.value.projectId),
       fetchMembers(currentTask.value.projectId),
+      fetchModules(currentTask.value.projectId),
     ])
   } else {
     await fetchGlobalStatuses()
@@ -457,6 +595,118 @@ const getInitials = (assignee: TaskAssignee) => {
                       </div>
                     </PopoverContent>
                   </Popover>
+                </div>
+              </div>
+
+              <!-- Proyecto / Modulo -->
+              <div v-if="currentTask.projectId" class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Proyecto / Modulo</p>
+                  <button
+                    type="button"
+                    class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    @click="showModuleExplorer ? (showModuleExplorer = false) : openModuleExplorer()"
+                  >
+                    {{ showModuleExplorer ? 'Cerrar' : 'Cambiar' }}
+                  </button>
+                </div>
+                <!-- Current path display -->
+                <div v-if="!showModuleExplorer" class="flex items-center gap-1 text-sm">
+                  <span v-for="(part, i) in currentModulePath" :key="i" class="flex items-center gap-1">
+                    <svg v-if="i > 0" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
+                    <span :class="i === currentModulePath.length - 1 ? 'font-medium' : 'text-muted-foreground'">{{ part }}</span>
+                  </span>
+                  <span v-if="!currentModulePath.length" class="text-muted-foreground">Sin modulo asignado</span>
+                </div>
+                <!-- Module Explorer -->
+                <div v-if="showModuleExplorer" class="space-y-2">
+                  <div class="border rounded-lg overflow-hidden">
+                    <div class="flex overflow-x-auto" style="height: 180px;">
+                      <!-- Columna: Modulos raiz -->
+                      <div class="min-w-[160px] max-w-[160px] border-r flex flex-col">
+                        <div class="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 border-b shrink-0">
+                          Modulos
+                        </div>
+                        <div class="overflow-y-auto flex-1">
+                          <button
+                            v-for="m in rootModules"
+                            :key="m.id"
+                            type="button"
+                            class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent/50 transition-colors"
+                            :class="explorerModuleIds[0] === m.id ? 'bg-accent text-accent-foreground font-medium' : ''"
+                            @click="explorerSelectModule(m.id, 0)"
+                          >
+                            <div v-if="m.color" class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: m.color }" />
+                            <span class="truncate flex-1">{{ m.name }}</span>
+                            <svg v-if="m.children?.length" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
+                          </button>
+                          <div v-if="!rootModules.length" class="px-3 py-4 text-xs text-muted-foreground text-center">
+                            Sin modulos
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Columna: Sub-nivel 1 -->
+                      <div v-if="level1Children.length" class="min-w-[160px] max-w-[160px] border-r flex flex-col">
+                        <div class="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 border-b shrink-0 truncate">
+                          {{ findModuleInTree(projectModules, explorerModuleIds[0])?.name }}
+                        </div>
+                        <div class="overflow-y-auto flex-1">
+                          <button
+                            v-for="m in level1Children"
+                            :key="m.id"
+                            type="button"
+                            class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent/50 transition-colors"
+                            :class="explorerModuleIds[1] === m.id ? 'bg-accent text-accent-foreground font-medium' : ''"
+                            @click="explorerSelectModule(m.id, 1)"
+                          >
+                            <div v-if="m.color" class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: m.color }" />
+                            <span class="truncate flex-1">{{ m.name }}</span>
+                            <svg v-if="m.children?.length" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Columna: Sub-nivel 2 -->
+                      <div v-if="level2Children.length" class="min-w-[160px] max-w-[160px] flex flex-col">
+                        <div class="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 border-b shrink-0 truncate">
+                          {{ findModuleInTree(projectModules, explorerModuleIds[1])?.name }}
+                        </div>
+                        <div class="overflow-y-auto flex-1">
+                          <button
+                            v-for="m in level2Children"
+                            :key="m.id"
+                            type="button"
+                            class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent/50 transition-colors"
+                            :class="explorerModuleIds[2] === m.id ? 'bg-accent text-accent-foreground font-medium' : ''"
+                            @click="explorerSelectModule(m.id, 2)"
+                          >
+                            <div v-if="m.color" class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: m.color }" />
+                            <span class="truncate flex-1">{{ m.name }}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Explorer breadcrumb -->
+                  <div v-if="explorerBreadcrumb.length" class="flex items-center gap-1 text-xs text-muted-foreground">
+                    <span v-for="(part, i) in explorerBreadcrumb" :key="i" class="flex items-center gap-1">
+                      <svg v-if="i > 0" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                      <span :class="i === explorerBreadcrumb.length - 1 ? 'text-foreground font-medium' : ''">{{ part }}</span>
+                    </span>
+                  </div>
+                  <!-- Action buttons -->
+                  <div class="flex items-center gap-2">
+                    <Button size="sm" class="h-7 text-xs" :disabled="!explorerModuleIds.length" @click="saveModuleSelection">
+                      Guardar
+                    </Button>
+                    <Button v-if="currentTask.moduleId" size="sm" variant="ghost" class="h-7 text-xs text-muted-foreground" @click="clearModuleSelection">
+                      Quitar modulo
+                    </Button>
+                    <Button size="sm" variant="outline" class="h-7 text-xs" @click="showModuleExplorer = false">
+                      Cancelar
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
