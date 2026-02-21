@@ -193,7 +193,7 @@ export const useProjects = () => {
         body: dto,
         headers: headers(),
       })
-      projectModules.value.push(res.data)
+      await fetchModules(projectId)
       return res.data
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error creando modulo'
@@ -217,13 +217,17 @@ export const useProjects = () => {
     }
   }
 
-  const deleteModule = async (moduleId: string) => {
+  const deleteModule = async (moduleId: string, projectId?: string) => {
     try {
       await $fetch(`${getApiUrl()}/project-modules/${moduleId}`, {
         method: 'DELETE',
         headers: headers(),
       })
-      projectModules.value = projectModules.value.filter(m => m.id !== moduleId)
+      if (projectId) {
+        await fetchModules(projectId)
+      } else {
+        projectModules.value = projectModules.value.filter(m => m.id !== moduleId)
+      }
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error eliminando modulo'
       throw e

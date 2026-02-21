@@ -34,7 +34,7 @@ const {
   currentProject, projectModules, taskStatuses, projectMembers, projectInvitations,
   loading, error,
   fetchBySlug, fetchModules, fetchStatuses, fetchMembers,
-  update, createModule, deleteModule, createStatus, deleteStatus,
+  update, createModule, updateModule, deleteModule, createStatus, deleteStatus,
   addMember, removeMember, inviteByEmail, fetchProjectInvitations,
 } = useProjects()
 
@@ -69,23 +69,113 @@ const saveProject = async () => {
 const newModuleName = ref('')
 const newModuleColor = ref('#6366f1')
 const showModuleInput = ref(false)
+const submoduleParentId = ref<string | null>(null)
+const expandedModules = ref<Set<string>>(new Set())
+
+const toggleExpand = (id: string) => {
+  const s = expandedModules.value
+  if (s.has(id)) s.delete(id)
+  else s.add(id)
+}
+
+const startSubmoduleCreate = (parentId: string) => {
+  submoduleParentId.value = parentId
+  showModuleInput.value = true
+  newModuleName.value = ''
+  newModuleColor.value = '#6366f1'
+}
+
+const cancelModuleCreate = () => {
+  showModuleInput.value = false
+  submoduleParentId.value = null
+  newModuleName.value = ''
+  newModuleColor.value = '#6366f1'
+}
+
+const getModuleName = (id: string): string => {
+  const find = (mods: typeof projectModules.value): string | null => {
+    for (const m of mods) {
+      if (m.id === id) return m.name
+      if (m.children?.length) {
+        const found = find(m.children)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  return find(projectModules.value) || 'Modulo'
+}
+
+const countAllModules = (mods: typeof projectModules.value): number => {
+  let count = 0
+  for (const m of mods) {
+    count++
+    if (m.children?.length) count += countAllModules(m.children)
+  }
+  return count
+}
+
+const getModuleDepth = (mod: typeof projectModules.value[0], mods: typeof projectModules.value): number => {
+  if (!mod.parentId) return 0
+  const find = (list: typeof mods, depth: number): number => {
+    for (const m of list) {
+      if (m.id === mod.parentId) return depth + 1
+      if (m.children?.length) {
+        const found = find(m.children, depth + 1)
+        if (found >= 0) return found
+      }
+    }
+    return -1
+  }
+  return find(mods, 0)
+}
 
 const handleCreateModule = async () => {
   if (!currentProject.value || !newModuleName.value.trim()) return
   try {
-    await createModule(currentProject.value.id, { name: newModuleName.value, color: newModuleColor.value })
-    newModuleName.value = ''
-    newModuleColor.value = '#6366f1'
-    showModuleInput.value = false
+    const dto: any = { name: newModuleName.value, color: newModuleColor.value }
+    if (submoduleParentId.value) dto.parentId = submoduleParentId.value
+    await createModule(currentProject.value.id, dto)
+    if (submoduleParentId.value) expandedModules.value.add(submoduleParentId.value)
+    cancelModuleCreate()
     toast.success('Modulo creado')
   } catch {
     toast.error('Error', error.value || 'No se pudo crear el modulo')
   }
 }
 
+// ── Edit module inline ──
+const editingModuleId = ref<string | null>(null)
+const editModuleName = ref('')
+const editModuleColor = ref('')
+
+const startEditModule = (mod: { id: string; name: string; color?: string }) => {
+  editingModuleId.value = mod.id
+  editModuleName.value = mod.name
+  editModuleColor.value = mod.color || '#8b5cf6'
+}
+
+const cancelEditModule = () => {
+  editingModuleId.value = null
+  editModuleName.value = ''
+  editModuleColor.value = ''
+}
+
+const handleUpdateModule = async () => {
+  if (!editingModuleId.value || !editModuleName.value.trim()) return
+  try {
+    await updateModule(editingModuleId.value, { name: editModuleName.value, color: editModuleColor.value })
+    if (currentProject.value) await fetchModules(currentProject.value.id)
+    cancelEditModule()
+    toast.success('Modulo actualizado')
+  } catch {
+    toast.error('Error', error.value || 'No se pudo actualizar el modulo')
+  }
+}
+
 const handleDeleteModule = async (moduleId: string) => {
   try {
-    await deleteModule(moduleId)
+    await deleteModule(moduleId, currentProject.value?.id)
     toast.success('Modulo eliminado')
   } catch {
     toast.error('Error', error.value || 'No se pudo eliminar el modulo')
@@ -338,49 +428,222 @@ onMounted(async () => {
         <!-- Tab: General (Modules + Statuses) -->
         <TabsContent value="overview">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <!-- Modules -->
+            <!-- Modules Tree -->
             <Card>
               <CardContent class="p-4 space-y-2">
                 <div class="flex items-center justify-between">
-                  <p class="text-sm font-semibold">Modulos ({{ projectModules.length }})</p>
-                  <Button size="sm" variant="outline" class="h-7 text-xs" @click="showModuleInput = !showModuleInput">
+                  <p class="text-sm font-semibold">Modulos ({{ countAllModules(projectModules) }})</p>
+                  <Button size="sm" variant="outline" class="h-7 text-xs" @click="showModuleInput ? cancelModuleCreate() : (showModuleInput = true)">
                     {{ showModuleInput ? 'Cancelar' : 'Agregar' }}
                   </Button>
                 </div>
+
                 <!-- Add module form -->
-                <div v-if="showModuleInput" class="flex items-center gap-2 pb-3 border-b">
-                  <input type="color" v-model="newModuleColor" class="w-7 h-7 rounded cursor-pointer border-0 p-0" />
-                  <Input v-model="newModuleName" placeholder="Nombre del modulo" class="flex-1" @keyup.enter="handleCreateModule" />
-                  <Button size="sm" :disabled="!newModuleName.trim()" @click="handleCreateModule">Crear</Button>
+                <div v-if="showModuleInput" class="space-y-2 pb-3 border-b">
+                  <div v-if="submoduleParentId" class="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-muted/50 rounded px-2 py-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></svg>
+                    Submodulo de: <span class="font-medium text-foreground">{{ getModuleName(submoduleParentId) }}</span>
+                    <button class="ml-auto text-[10px] underline hover:text-foreground" @click="submoduleParentId = null">Modulo raiz</button>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input type="color" v-model="newModuleColor" class="w-7 h-7 rounded cursor-pointer border-0 p-0" />
+                    <Input v-model="newModuleName" placeholder="Nombre del modulo" class="flex-1" @keyup.enter="handleCreateModule" />
+                    <Button size="sm" :disabled="!newModuleName.trim()" @click="handleCreateModule">Crear</Button>
+                  </div>
                 </div>
 
-                <div v-if="projectModules.length === 0 && !showModuleInput" class="text-muted-foreground text-xs">
+                <div v-if="projectModules.length === 0 && !showModuleInput" class="text-muted-foreground text-xs py-2 text-center">
                   Sin modulos
                 </div>
-                <div v-for="mod in projectModules" :key="mod.id" class="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
-                  <div class="flex items-center gap-2">
-                    <div v-if="mod.color" class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: mod.color }" />
-                    <span class="text-xs">{{ mod.name }}</span>
-                  </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger as-child>
-                      <Button size="sm" variant="ghost" class="h-7 w-7 p-0 text-muted-foreground hover:text-destructive">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Eliminar modulo</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Estas seguro de eliminar "{{ mod.name }}"? Esta accion no se puede deshacer.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction @click="handleDeleteModule(mod.id)">Eliminar</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+
+                <!-- Module Tree -->
+                <div v-if="projectModules.length" class="space-y-1 pt-1">
+                  <template v-for="(mod, modIdx) in projectModules" :key="mod.id">
+                    <!-- Root module (Level 0) — group header -->
+                    <div class="group/root rounded-md border border-border/60 bg-muted/30 overflow-hidden">
+                      <div class="flex items-center justify-between px-2.5 py-1.5">
+                        <!-- Editing mode -->
+                        <div v-if="editingModuleId === mod.id" class="flex items-center gap-2 flex-1 min-w-0">
+                          <input type="color" v-model="editModuleColor" class="w-6 h-6 rounded cursor-pointer border-0 p-0 shrink-0" />
+                          <Input v-model="editModuleName" class="h-7 text-xs flex-1" @keyup.enter="handleUpdateModule" @keyup.escape="cancelEditModule" />
+                          <Button size="sm" variant="default" class="h-6 px-2 text-[11px]" :disabled="!editModuleName.trim()" @click="handleUpdateModule">Ok</Button>
+                          <Button size="sm" variant="ghost" class="h-6 px-2 text-[11px]" @click="cancelEditModule">No</Button>
+                        </div>
+                        <!-- View mode -->
+                        <template v-else>
+                          <div class="flex items-center gap-2 min-w-0">
+                            <button
+                              v-if="mod.children?.length"
+                              class="w-4 h-4 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-transform duration-150"
+                              :class="{ 'rotate-90': expandedModules.has(mod.id) }"
+                              @click="toggleExpand(mod.id)"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            </button>
+                            <div v-else class="w-4 shrink-0" />
+                            <div class="w-3 h-3 rounded shrink-0" :style="{ backgroundColor: mod.color || '#8b5cf6' }" />
+                            <span class="text-xs font-semibold truncate">{{ mod.name }}</span>
+                            <Badge v-if="mod.children?.length" variant="secondary" class="text-[9px] px-1 py-0 h-4 shrink-0">
+                              {{ countAllModules(mod.children) }}
+                            </Badge>
+                          </div>
+                          <div class="flex items-center gap-0.5 opacity-0 group-hover/root:opacity-100 transition-opacity shrink-0">
+                            <Button size="sm" variant="ghost" class="h-6 w-6 p-0 text-muted-foreground hover:text-foreground" title="Editar" @click="startEditModule(mod)">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+                            </Button>
+                            <Button size="sm" variant="ghost" class="h-6 w-6 p-0 text-muted-foreground hover:text-primary" title="Agregar submodulo" @click="startSubmoduleCreate(mod.id)">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger as-child>
+                                <Button size="sm" variant="ghost" class="h-6 w-6 p-0 text-muted-foreground hover:text-destructive">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Eliminar modulo</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Estas seguro de eliminar "{{ mod.name }}"?
+                                    <template v-if="mod.children?.length"> Tambien se eliminaran {{ countAllModules(mod.children) }} submodulo(s).</template>
+                                    Esta accion no se puede deshacer.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction @click="handleDeleteModule(mod.id)">Eliminar</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </template>
+                      </div>
+
+                      <!-- Level 1 children — tree inside the group -->
+                      <div v-if="mod.children?.length && expandedModules.has(mod.id)" class="border-t border-border/40 bg-background/50">
+                        <template v-for="(child, childIdx) in mod.children" :key="child.id">
+                          <div class="group/child">
+                            <div class="flex items-center justify-between pl-3 pr-2.5 py-1.5" :class="{ 'border-t border-border/30': childIdx > 0 }">
+                              <!-- Editing mode -->
+                              <div v-if="editingModuleId === child.id" class="flex items-center gap-2 flex-1 min-w-0 pl-5">
+                                <input type="color" v-model="editModuleColor" class="w-5 h-5 rounded cursor-pointer border-0 p-0 shrink-0" />
+                                <Input v-model="editModuleName" class="h-7 text-xs flex-1" @keyup.enter="handleUpdateModule" @keyup.escape="cancelEditModule" />
+                                <Button size="sm" variant="default" class="h-6 px-2 text-[11px]" :disabled="!editModuleName.trim()" @click="handleUpdateModule">Ok</Button>
+                                <Button size="sm" variant="ghost" class="h-6 px-2 text-[11px]" @click="cancelEditModule">No</Button>
+                              </div>
+                              <!-- View mode -->
+                              <template v-else>
+                                <div class="flex items-center gap-0 min-w-0">
+                                  <div class="w-5 h-full flex items-center shrink-0">
+                                    <svg width="16" height="20" viewBox="0 0 16 20" class="text-border shrink-0">
+                                      <path :d="childIdx < mod.children!.length - 1 ? 'M8 0 V20 M8 10 H16' : 'M8 0 V10 H16'" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                                    </svg>
+                                  </div>
+                                  <button
+                                    v-if="child.children?.length"
+                                    class="w-4 h-4 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-transform duration-150"
+                                    :class="{ 'rotate-90': expandedModules.has(child.id) }"
+                                    @click="toggleExpand(child.id)"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                                  </button>
+                                  <div v-else class="w-4 shrink-0" />
+                                  <div class="w-2.5 h-2.5 rounded-sm shrink-0 ml-1" :style="{ backgroundColor: child.color || '#8b5cf6' }" />
+                                  <span class="text-xs ml-1.5 truncate">{{ child.name }}</span>
+                                  <Badge v-if="child.children?.length" variant="outline" class="text-[9px] px-1 py-0 h-4 ml-1.5 shrink-0">
+                                    {{ child.children.length }}
+                                  </Badge>
+                                </div>
+                                <div class="flex items-center gap-0.5 opacity-0 group-hover/child:opacity-100 transition-opacity shrink-0">
+                                  <Button size="sm" variant="ghost" class="h-6 w-6 p-0 text-muted-foreground hover:text-foreground" title="Editar" @click="startEditModule(child)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+                                  </Button>
+                                  <Button size="sm" variant="ghost" class="h-6 w-6 p-0 text-muted-foreground hover:text-primary" title="Agregar submodulo" @click="startSubmoduleCreate(child.id)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger as-child>
+                                      <Button size="sm" variant="ghost" class="h-6 w-6 p-0 text-muted-foreground hover:text-destructive">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Eliminar submodulo</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Estas seguro de eliminar "{{ child.name }}"?
+                                          <template v-if="child.children?.length"> Tambien se eliminaran {{ child.children.length }} submodulo(s).</template>
+                                          Esta accion no se puede deshacer.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction @click="handleDeleteModule(child.id)">Eliminar</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </template>
+                            </div>
+
+                            <!-- Level 2 grandchildren — deepest level inside child -->
+                            <div v-if="child.children?.length && expandedModules.has(child.id)" class="bg-muted/20">
+                              <template v-for="(grandchild, gcIdx) in child.children" :key="grandchild.id">
+                                <div
+                                  class="group/gc flex items-center justify-between pl-8 pr-2.5 py-1"
+                                  :class="{ 'border-t border-border/20': true }"
+                                >
+                                  <!-- Editing mode -->
+                                  <div v-if="editingModuleId === grandchild.id" class="flex items-center gap-2 flex-1 min-w-0 pl-5">
+                                    <input type="color" v-model="editModuleColor" class="w-5 h-5 rounded cursor-pointer border-0 p-0 shrink-0" />
+                                    <Input v-model="editModuleName" class="h-6 text-[11px] flex-1" @keyup.enter="handleUpdateModule" @keyup.escape="cancelEditModule" />
+                                    <Button size="sm" variant="default" class="h-5 px-2 text-[10px]" :disabled="!editModuleName.trim()" @click="handleUpdateModule">Ok</Button>
+                                    <Button size="sm" variant="ghost" class="h-5 px-2 text-[10px]" @click="cancelEditModule">No</Button>
+                                  </div>
+                                  <!-- View mode -->
+                                  <template v-else>
+                                    <div class="flex items-center gap-0 min-w-0">
+                                      <div class="w-5 h-full flex items-center shrink-0">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" class="text-border/60 shrink-0">
+                                          <path :d="gcIdx < child.children!.length - 1 ? 'M8 0 V16 M8 8 H16' : 'M8 0 V8 H16'" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/>
+                                        </svg>
+                                      </div>
+                                      <div class="w-2 h-2 rounded-full shrink-0 ml-1" :style="{ backgroundColor: grandchild.color || '#8b5cf6', opacity: 0.7 }" />
+                                      <span class="text-[11px] text-muted-foreground ml-1.5 truncate">{{ grandchild.name }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-0.5 opacity-0 group-hover/gc:opacity-100 transition-opacity shrink-0">
+                                      <Button size="sm" variant="ghost" class="h-5 w-5 p-0 text-muted-foreground hover:text-foreground" title="Editar" @click="startEditModule(grandchild)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+                                      </Button>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger as-child>
+                                          <Button size="sm" variant="ghost" class="h-5 w-5 p-0 text-muted-foreground hover:text-destructive">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Eliminar submodulo</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Estas seguro de eliminar "{{ grandchild.name }}"? Esta accion no se puede deshacer.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction @click="handleDeleteModule(grandchild.id)">Eliminar</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </div>
+                                  </template>
+                                </div>
+                              </template>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
                 </div>
               </CardContent>
             </Card>

@@ -32,12 +32,14 @@ export interface ProjectMember {
 export interface ProjectModule {
   id: string
   projectId: string
+  parentId?: string | null
   name: string
   description?: string
   color?: string
   position: number
   isActive: boolean
   createdAt: string
+  children?: ProjectModule[]
 }
 
 export interface TaskStatus {
@@ -68,6 +70,7 @@ export interface CreateModuleDto {
   name: string
   description?: string
   color?: string
+  parentId?: string
 }
 
 export interface CreateStatusDto {
