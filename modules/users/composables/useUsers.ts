@@ -9,6 +9,11 @@ import type {
 } from '../types'
 import { useAuth } from '~/modules/auth/composables/useAuth'
 
+const getApiUrl = () => {
+  const config = useRuntimeConfig()
+  return config.public.apiUrl as string
+}
+
 /**
  * Composable para gestionar usuarios
  */
@@ -78,7 +83,7 @@ export const useUsers = () => {
         ...(filters?.isActive !== undefined && { isActive: filters.isActive }),
       }
 
-      const response = await fetchWithAuth<UserListResponse>('/api/users/admin/all', {
+      const response = await fetchWithAuth<UserListResponse>(`${getApiUrl()}/users/admin/all`, {
         method: 'GET',
         params,
       })
@@ -119,7 +124,7 @@ export const useUsers = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<UserResponse>(`/api/users/${id}`, {
+      const response = await fetchWithAuth<UserResponse>(`${getApiUrl()}/users/admin/${id}`, {
         method: 'GET',
       })
 
@@ -146,15 +151,15 @@ export const useUsers = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<UserResponse>('/api/users', {
+      const response = await fetchWithAuth<{ success: boolean; data: { user: User; message: string } }>(`${getApiUrl()}/auth/register`, {
         method: 'POST',
         body: data,
       })
 
-      if (response.success && response.data) {
-        users.value.unshift(response.data)
+      if (response.success && response.data?.user) {
+        users.value.unshift(response.data.user)
         total.value += 1
-        return response.data
+        return response.data.user
       }
 
       return null
@@ -175,7 +180,7 @@ export const useUsers = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<UserResponse>(`/api/users/${id}`, {
+      const response = await fetchWithAuth<UserResponse>(`${getApiUrl()}/users/admin/${id}`, {
         method: 'PUT',
         body: data,
       })
@@ -208,7 +213,7 @@ export const useUsers = () => {
 
     try {
       const response = await fetchWithAuth<{ success: boolean; message?: string }>(
-        `/api/users/${id}`,
+        `${getApiUrl()}/users/admin/${id}`,
         {
           method: 'DELETE',
         }
@@ -238,7 +243,7 @@ export const useUsers = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<any>('/api/users/admin/search', {
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/users/admin/search`, {
         method: 'GET',
         params: { q: query, limit: searchLimit },
       })
@@ -262,7 +267,7 @@ export const useUsers = () => {
 
     try {
       const endpoint = isActive ? 'activate' : 'deactivate'
-      const response = await fetchWithAuth<UserResponse>(`/api/users/admin/${id}/${endpoint}`, {
+      const response = await fetchWithAuth<UserResponse>(`${getApiUrl()}/users/admin/${id}/${endpoint}`, {
         method: 'PATCH',
       })
 
@@ -289,7 +294,7 @@ export const useUsers = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<UserResponse>(`/api/users/admin/${id}/role`, {
+      const response = await fetchWithAuth<UserResponse>(`${getApiUrl()}/users/admin/${id}/role`, {
         method: 'PATCH',
         body: { role },
       })
@@ -317,7 +322,7 @@ export const useUsers = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<any>('/api/users/admin/stats', {
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/users/admin/stats`, {
         method: 'GET',
       })
       return response
@@ -335,7 +340,7 @@ export const useUsers = () => {
    */
   const getUserActivity = async (userId: string, limitCount: number = 20, offset: number = 0) => {
     try {
-      const response = await fetchWithAuth<any>(`/api/users/admin/${userId}/activity`, {
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/users/admin/${userId}/activity`, {
         method: 'GET',
         params: { limit: limitCount, offset },
       })
@@ -351,7 +356,7 @@ export const useUsers = () => {
    */
   const getUserActivityStats = async (userId: string) => {
     try {
-      const response = await fetchWithAuth<any>(`/api/users/admin/${userId}/activity/stats`, {
+      const response = await fetchWithAuth<any>(`${getApiUrl()}/users/admin/${userId}/activity/stats`, {
         method: 'GET',
       })
       return response

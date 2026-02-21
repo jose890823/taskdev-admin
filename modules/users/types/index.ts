@@ -2,7 +2,7 @@
  * Tipos para el modulo de usuarios
  */
 
-export type UserRole = 'owner' | 'employee' | 'super_admin'
+export type UserRole = 'user' | 'super_admin'
 
 export interface User {
   id: string
