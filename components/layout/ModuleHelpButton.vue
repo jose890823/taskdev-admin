@@ -19,6 +19,9 @@ import {
   LightbulbIcon,
   AlertCircleIcon,
   BellIcon,
+  FolderKanbanIcon,
+  CalendarIcon,
+  MailIcon,
 } from 'lucide-vue-next'
 import {
   Dialog,
@@ -68,6 +71,9 @@ const iconMap: Record<string, any> = {
   lightbulb: LightbulbIcon,
   alert: AlertCircleIcon,
   bell: BellIcon,
+  folder: FolderKanbanIcon,
+  calendar: CalendarIcon,
+  mail: MailIcon,
 }
 
 const getIcon = (key: string) => iconMap[key] || HelpCircleIcon
@@ -198,7 +204,7 @@ const setActiveTab = (key: string, index: number) => {
         <Tabs default-value="admin" class="mt-2">
           <TabsList class="grid w-full grid-cols-2">
             <TabsTrigger value="admin">Admin</TabsTrigger>
-            <TabsTrigger value="cliente">Cliente</TabsTrigger>
+            <TabsTrigger value="cliente">Miembro</TabsTrigger>
           </TabsList>
 
           <TabsContent value="admin" class="mt-4 space-y-3">

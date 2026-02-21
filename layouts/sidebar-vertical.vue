@@ -80,6 +80,7 @@
         <slot />
       </main>
     </SidebarInset>
+    <Sonner />
   </SidebarProvider>
 </template>
 
@@ -110,6 +111,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '~/components/ui/sidebar'
+import { Sonner } from '~/components/ui/sonner'
 import { useBreadcrumbMeta } from '~/composables/useBreadcrumbMeta'
 
 /**

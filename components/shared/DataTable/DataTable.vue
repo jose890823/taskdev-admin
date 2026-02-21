@@ -343,6 +343,7 @@ const visibleColumns = computed(() => props.columns.filter((col) => !col.hidden)
             v-for="(row, index) in paginatedData"
             :key="getRowKey(row, index)"
             :class="[
+              'group/row',
               getRowClass(row),
               index % 2 === 0 ? 'bg-background' : 'bg-muted/30'
             ]"
