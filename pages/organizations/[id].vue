@@ -18,7 +18,7 @@ const route = useRoute()
 const orgId = route.params.id as string
 const toast = useToast()
 
-const { currentOrg, members, invitations, loading, error, fetchById, fetchMembers, fetchInvitations, createInvitation, resendInvitation, cancelInvitation } = useOrganizations()
+const { currentOrg, members, invitations, loading, error, fetchById, fetchMembers, fetchInvitations, createInvitation, resendInvitation, cancelInvitation, update } = useOrganizations()
 const { user } = useAuth()
 const { setMeta } = useBreadcrumbMeta()
 
@@ -29,9 +29,44 @@ const currentUserRole = computed(() => {
   return member?.role || null
 })
 
-const canManageInvitations = computed(() => {
+const canManage = computed(() => {
   return currentUserRole.value === 'owner' || currentUserRole.value === 'admin'
 })
+
+// Edicion inline
+const editing = ref(false)
+const editName = ref('')
+const editDescription = ref('')
+const saving = ref(false)
+
+const startEditing = () => {
+  editName.value = currentOrg.value?.name || ''
+  editDescription.value = currentOrg.value?.description || ''
+  editing.value = true
+}
+
+const cancelEditing = () => {
+  editing.value = false
+}
+
+const saveEditing = async () => {
+  if (!editName.value.trim()) return
+  saving.value = true
+  try {
+    const result = await update(orgId, {
+      name: editName.value.trim(),
+      description: editDescription.value.trim() || undefined,
+    })
+    if (result) {
+      toast.success('Organizacion actualizada')
+      editing.value = false
+    } else {
+      toast.error('Error', error.value || 'No se pudo actualizar')
+    }
+  } finally {
+    saving.value = false
+  }
+}
 
 // Formulario de invitacion
 const inviteEmail = ref('')
@@ -142,14 +177,35 @@ const getMemberEmail = (member: any): string | null => {
         <Button variant="ghost" size="sm" class="h-7 w-7 p-0 text-muted-foreground" @click="navigateTo('/organizations')">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </Button>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-lg font-semibold tracking-tight leading-tight">{{ currentOrg.name }}</h1>
-            <Badge v-if="currentOrg.systemCode" variant="secondary" class="text-[10px] px-1.5 py-0 font-mono">{{ currentOrg.systemCode }}</Badge>
+
+        <!-- Modo edicion -->
+        <template v-if="editing">
+          <div class="flex-1 space-y-1.5">
+            <Input v-model="editName" placeholder="Nombre de la organizacion" class="h-8 text-sm font-semibold" @keydown.enter="saveEditing" @keydown.escape="cancelEditing" />
+            <Input v-model="editDescription" placeholder="Descripcion (opcional)" class="h-7 text-xs" @keydown.enter="saveEditing" @keydown.escape="cancelEditing" />
+            <div class="flex items-center gap-1.5">
+              <Button size="sm" class="h-6 text-xs" :disabled="saving || !editName.trim()" @click="saveEditing">
+                {{ saving ? 'Guardando...' : 'Guardar' }}
+              </Button>
+              <Button size="sm" variant="ghost" class="h-6 text-xs" :disabled="saving" @click="cancelEditing">Cancelar</Button>
+            </div>
           </div>
-          <p v-if="currentOrg.description" class="text-xs text-muted-foreground" v-html="currentOrg.description" />
-          <p v-else class="text-xs text-muted-foreground">{{ currentOrg.slug }}</p>
-        </div>
+        </template>
+
+        <!-- Modo lectura -->
+        <template v-else>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg font-semibold tracking-tight leading-tight">{{ currentOrg.name }}</h1>
+              <Badge v-if="currentOrg.systemCode" variant="secondary" class="text-[10px] px-1.5 py-0 font-mono">{{ currentOrg.systemCode }}</Badge>
+              <Button v-if="canManage" variant="ghost" size="sm" class="h-6 w-6 p-0 text-muted-foreground hover:text-foreground" title="Editar organizacion" @click="startEditing">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+              </Button>
+            </div>
+            <p v-if="currentOrg.description" class="text-xs text-muted-foreground" v-html="currentOrg.description" />
+            <p v-else class="text-xs text-muted-foreground">{{ currentOrg.slug }}</p>
+          </div>
+        </template>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -179,7 +235,7 @@ const getMemberEmail = (member: any): string | null => {
         </Card>
 
         <!-- Invitar + Invitaciones (solo owner/admin) -->
-        <div v-if="canManageInvitations" class="space-y-3">
+        <div v-if="canManage" class="space-y-3">
           <!-- Formulario de invitacion inline -->
           <Card>
             <CardContent class="p-4 space-y-2">
