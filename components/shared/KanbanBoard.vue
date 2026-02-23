@@ -453,6 +453,44 @@ const handleDragEnd = () => {
         </button>
       </div>
 
+      <!-- Inline add task -->
+      <div v-if="getInlineAdd(col.status.id).active" class="px-2 pt-2">
+        <div
+          class="border rounded-lg p-3 border-l-[3px] border-dashed"
+          :style="{ borderLeftColor: col.status.color }"
+        >
+          <input
+            :data-inline-input="col.status.id"
+            :value="getInlineAdd(col.status.id).title"
+            @input="(e) => getInlineAdd(col.status.id).title = (e.target as HTMLInputElement).value"
+            placeholder="Titulo de la tarea..."
+            class="w-full text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground/60"
+            :disabled="getInlineAdd(col.status.id).saving"
+            @keyup.enter="submitInlineAdd(col.status.id)"
+            @keyup.escape="cancelInlineAdd(col.status.id)"
+          />
+          <div class="flex items-center justify-end gap-1 mt-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              class="h-6 text-xs px-2"
+              :disabled="getInlineAdd(col.status.id).saving"
+              @click="cancelInlineAdd(col.status.id)"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              class="h-6 text-xs px-2"
+              :disabled="!getInlineAdd(col.status.id).title.trim() || getInlineAdd(col.status.id).saving"
+              @click="submitInlineAdd(col.status.id)"
+            >
+              {{ getInlineAdd(col.status.id).saving ? 'Creando...' : 'Crear' }}
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <!-- Draggable area -->
       <VueDraggable
         v-model="col.tasks"
@@ -547,44 +585,6 @@ const handleDragEnd = () => {
           </div>
         </div>
       </VueDraggable>
-
-      <!-- Inline add task -->
-      <div v-if="getInlineAdd(col.status.id).active" class="px-2 pb-2">
-        <div
-          class="border rounded-lg p-3 border-l-[3px] border-dashed"
-          :style="{ borderLeftColor: col.status.color }"
-        >
-          <input
-            :data-inline-input="col.status.id"
-            :value="getInlineAdd(col.status.id).title"
-            @input="(e) => getInlineAdd(col.status.id).title = (e.target as HTMLInputElement).value"
-            placeholder="Titulo de la tarea..."
-            class="w-full text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground/60"
-            :disabled="getInlineAdd(col.status.id).saving"
-            @keyup.enter="submitInlineAdd(col.status.id)"
-            @keyup.escape="cancelInlineAdd(col.status.id)"
-          />
-          <div class="flex items-center justify-end gap-1 mt-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="h-6 text-xs px-2"
-              :disabled="getInlineAdd(col.status.id).saving"
-              @click="cancelInlineAdd(col.status.id)"
-            >
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              class="h-6 text-xs px-2"
-              :disabled="!getInlineAdd(col.status.id).title.trim() || getInlineAdd(col.status.id).saving"
-              @click="submitInlineAdd(col.status.id)"
-            >
-              {{ getInlineAdd(col.status.id).saving ? 'Creando...' : 'Crear' }}
-            </Button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
