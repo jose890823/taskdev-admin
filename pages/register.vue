@@ -55,8 +55,8 @@ const validateForm = (): boolean => {
     validationErrors.value.password = 'La contrasena es requerida'
   } else if (password.value.length < 8) {
     validationErrors.value.password = 'Minimo 8 caracteres'
-  } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password.value)) {
-    validationErrors.value.password = 'Debe incluir mayuscula, minuscula, numero y caracter especial (@$!%*?&)'
+  } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s])/.test(password.value)) {
+    validationErrors.value.password = 'Debe incluir mayuscula, minuscula, numero y caracter especial'
   }
 
   if (!phone.value) {
