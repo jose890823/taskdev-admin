@@ -47,6 +47,9 @@ onMounted(async () => {
     const res = await $fetch<{ success: boolean; data: any }>(`${apiUrl}/invitations/info/${token}`)
     inviteInfo.value = res.data
   } catch (e: any) {
+    if (import.meta.client) {
+      localStorage.removeItem('pending-invite-token')
+    }
     status.value = 'error'
     message.value = 'Invitacion no encontrada o invalida'
     return
@@ -54,10 +57,16 @@ onMounted(async () => {
 
   // 2. Verificar si la invitacion esta expirada o ya usada
   if (inviteInfo.value?.expired || inviteInfo.value?.status !== 'pending') {
+    // Limpiar token invalido del localStorage
+    if (import.meta.client) {
+      localStorage.removeItem('pending-invite-token')
+    }
     status.value = 'error'
     message.value = inviteInfo.value?.status === 'accepted'
       ? 'Esta invitacion ya fue aceptada'
-      : 'Esta invitacion ha expirado'
+      : inviteInfo.value?.status === 'cancelled'
+        ? 'Esta invitacion fue cancelada'
+        : 'Esta invitacion ha expirado'
     return
   }
 
@@ -92,6 +101,9 @@ const acceptInvitation = async () => {
       ? `Te has unido al proyecto ${inviteInfo.value.projectName} exitosamente`
       : `Te has unido a ${inviteInfo.value?.organizationName} exitosamente`
   } catch (e: any) {
+    if (import.meta.client) {
+      localStorage.removeItem('pending-invite-token')
+    }
     status.value = 'error'
     message.value = e.data?.error?.message || 'Error al aceptar la invitacion'
   }

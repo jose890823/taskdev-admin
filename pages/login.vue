@@ -8,15 +8,21 @@ const route = useRoute()
 const redirect = (route.query.redirect as string) || ''
 
 // Si ya está autenticado, redirigir
-onMounted(() => {
+onMounted(async () => {
   if (isAuthenticated.value) {
-    // Verificar invitacion pendiente en localStorage
     const pendingInvite = import.meta.client ? localStorage.getItem('pending-invite-token') : null
     if (pendingInvite) {
-      navigateTo(`/invite/${pendingInvite}`)
-    } else {
-      navigateTo(redirect || '/')
+      try {
+        const config = useRuntimeConfig()
+        const res = await $fetch<{ success: boolean; data: any }>(`${config.public.apiUrl}/invitations/info/${pendingInvite}`)
+        if (res.data?.status === 'pending' && !res.data?.expired) {
+          navigateTo(`/invite/${pendingInvite}`)
+          return
+        }
+      } catch {}
+      localStorage.removeItem('pending-invite-token')
     }
+    navigateTo(redirect || '/')
   }
 })
 

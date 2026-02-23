@@ -58,13 +58,21 @@ const handleSubmit = async () => {
   })
 
   if (success) {
-    // Verificar si hay invitacion pendiente en localStorage
+    // Verificar si hay invitacion pendiente valida en localStorage
     const pendingInvite = import.meta.client ? localStorage.getItem('pending-invite-token') : null
     if (pendingInvite) {
-      await navigateTo(`/invite/${pendingInvite}`)
-    } else {
-      await navigateTo(props.redirect || '/')
+      try {
+        const config = useRuntimeConfig()
+        const res = await $fetch<{ success: boolean; data: any }>(`${config.public.apiUrl}/invitations/info/${pendingInvite}`)
+        if (res.data?.status === 'pending' && !res.data?.expired) {
+          await navigateTo(`/invite/${pendingInvite}`)
+          return
+        }
+      } catch {}
+      // Invitacion invalida, limpiar y seguir al dashboard
+      localStorage.removeItem('pending-invite-token')
     }
+    await navigateTo(props.redirect || '/')
   } else {
     error('Error de autenticación', authError.value || 'Credenciales incorrectas')
   }
