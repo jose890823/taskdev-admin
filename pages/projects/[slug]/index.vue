@@ -252,6 +252,12 @@ const handleBulkUpdate = async (items: import('~/modules/tasks/types').BulkPosit
   await bulkUpdatePositions(items)
 }
 
+const handleTaskCreatedFromBoard = async () => {
+  if (currentProject.value) {
+    await fetchTasks({ projectId: currentProject.value.id, limit: 500 })
+  }
+}
+
 // ── Tasks Tab ──
 const taskSearch = ref('')
 const taskFilterStatus = ref('all')
@@ -948,8 +954,10 @@ onMounted(async () => {
             :tasks="projectTasks"
             :loading="tasksLoading"
             :storage-key="slug"
+            :project-id="currentProject?.id"
             @task-click="(task) => router.push(`/tasks/${task.id}`)"
             @bulk-update="handleBulkUpdate"
+            @task-created="handleTaskCreatedFromBoard"
           />
         </TabsContent>
 

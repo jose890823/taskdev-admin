@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, reactive, onMounted } from 'vue'
+import { ref, computed, watch, reactive, onMounted, nextTick } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -7,17 +7,20 @@ import { Input } from '~/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
 import type { TaskStatus } from '~/modules/projects/types'
 import type { Task, TaskAssignee, BulkPositionItem } from '~/modules/tasks/types'
+import { useTasks } from '~/modules/tasks/composables/useTasks'
 
 const props = defineProps<{
   statuses: TaskStatus[]
   tasks: Task[]
   loading?: boolean
   storageKey?: string
+  projectId?: string
 }>()
 
 const emit = defineEmits<{
   'task-click': [task: Task]
   'bulk-update': [items: BulkPositionItem[]]
+  'task-created': [task: Task]
 }>()
 
 interface Column {
@@ -246,6 +249,54 @@ const getAssigneeNames = (task: Task): string => {
 
 const MAX_VISIBLE_AVATARS = 3
 
+// ── Inline task creation ──
+const inlineAdd = reactive<Record<string, { active: boolean; title: string; saving: boolean }>>({})
+
+const getInlineAdd = (statusId: string) => {
+  if (!inlineAdd[statusId]) {
+    inlineAdd[statusId] = { active: false, title: '', saving: false }
+  }
+  return inlineAdd[statusId]
+}
+
+const startInlineAdd = (statusId: string) => {
+  const state = getInlineAdd(statusId)
+  state.active = true
+  state.title = ''
+  nextTick(() => {
+    const input = document.querySelector(`[data-inline-input="${statusId}"]`) as HTMLInputElement
+    input?.focus()
+  })
+}
+
+const cancelInlineAdd = (statusId: string) => {
+  const state = getInlineAdd(statusId)
+  state.active = false
+  state.title = ''
+}
+
+const submitInlineAdd = async (statusId: string) => {
+  const state = getInlineAdd(statusId)
+  if (!state.title.trim() || state.saving) return
+
+  state.saving = true
+  try {
+    const { create } = useTasks()
+    const task = await create({
+      title: state.title.trim(),
+      projectId: props.projectId,
+      statusId,
+    })
+    if (task) {
+      state.active = false
+      state.title = ''
+      emit('task-created', task)
+    }
+  } finally {
+    state.saving = false
+  }
+}
+
 const handleDragEnd = () => {
   const updates: BulkPositionItem[] = []
 
@@ -390,6 +441,16 @@ const handleDragEnd = () => {
         <Badge variant="secondary" class="text-xs h-5 min-w-[1.25rem] justify-center">
           {{ col.tasks.length }}
         </Badge>
+
+        <!-- Add task button -->
+        <button
+          v-if="projectId"
+          class="flex items-center justify-center w-6 h-6 rounded hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground"
+          title="Agregar tarea"
+          @click="startInlineAdd(col.status.id)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        </button>
       </div>
 
       <!-- Draggable area -->
@@ -486,6 +547,44 @@ const handleDragEnd = () => {
           </div>
         </div>
       </VueDraggable>
+
+      <!-- Inline add task -->
+      <div v-if="getInlineAdd(col.status.id).active" class="px-2 pb-2">
+        <div
+          class="border rounded-lg p-3 border-l-[3px] border-dashed"
+          :style="{ borderLeftColor: col.status.color }"
+        >
+          <input
+            :data-inline-input="col.status.id"
+            :value="getInlineAdd(col.status.id).title"
+            @input="(e) => getInlineAdd(col.status.id).title = (e.target as HTMLInputElement).value"
+            placeholder="Titulo de la tarea..."
+            class="w-full text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground/60"
+            :disabled="getInlineAdd(col.status.id).saving"
+            @keyup.enter="submitInlineAdd(col.status.id)"
+            @keyup.escape="cancelInlineAdd(col.status.id)"
+          />
+          <div class="flex items-center justify-end gap-1 mt-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              class="h-6 text-xs px-2"
+              :disabled="getInlineAdd(col.status.id).saving"
+              @click="cancelInlineAdd(col.status.id)"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              class="h-6 text-xs px-2"
+              :disabled="!getInlineAdd(col.status.id).title.trim() || getInlineAdd(col.status.id).saving"
+              @click="submitInlineAdd(col.status.id)"
+            >
+              {{ getInlineAdd(col.status.id).saving ? 'Creando...' : 'Crear' }}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

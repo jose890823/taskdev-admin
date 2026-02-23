@@ -35,6 +35,12 @@ const handleTaskClick = (task: { id: string }) => {
   router.push(`/tasks/${task.id}`)
 }
 
+const handleTaskCreated = async () => {
+  if (currentProject.value) {
+    await fetchTasks({ projectId: currentProject.value.id, limit: 500 })
+  }
+}
+
 onMounted(async () => {
   await fetchBySlug(slug)
   if (currentProject.value) {
@@ -73,8 +79,10 @@ onMounted(async () => {
         :tasks="projectTasks"
         :loading="tasksLoading"
         :storage-key="slug"
+        :project-id="currentProject.id"
         @task-click="handleTaskClick"
         @bulk-update="handleBulkUpdate"
+        @task-created="handleTaskCreated"
       />
     </template>
   </div>
