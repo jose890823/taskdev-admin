@@ -79,7 +79,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<CacheStatsResponse>(`${getApiUrl()}/admin/cache/stats`, {
+      const response = await fetchWithAuth<CacheStatsResponse>(`${getApiUrl()}/v1/admin/cache/stats`, {
         method: 'GET',
       })
 
@@ -105,7 +105,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<CacheHealthResponse>(`${getApiUrl()}/admin/cache/health`, {
+      const response = await fetchWithAuth<CacheHealthResponse>(`${getApiUrl()}/v1/admin/cache/health`, {
         method: 'GET',
       })
 
@@ -131,7 +131,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<CacheKeysResponse>(`${getApiUrl()}/admin/cache/keys/${encodeURIComponent(pattern)}`, {
+      const response = await fetchWithAuth<CacheKeysResponse>(`${getApiUrl()}/v1/admin/cache/keys/${encodeURIComponent(pattern)}`, {
         method: 'GET',
       })
 
@@ -161,7 +161,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; message?: string }>(`${getApiUrl()}/admin/cache/invalidate`, {
+      const response = await fetchWithAuth<{ success: boolean; message?: string }>(`${getApiUrl()}/v1/admin/cache/invalidate`, {
         method: 'POST',
         body: { pattern },
       })
@@ -184,7 +184,7 @@ export const useCache = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; message?: string }>(`${getApiUrl()}/admin/cache/flush`, {
+      const response = await fetchWithAuth<{ success: boolean; message?: string }>(`${getApiUrl()}/v1/admin/cache/flush`, {
         method: 'POST',
       })
 

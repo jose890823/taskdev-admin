@@ -91,7 +91,7 @@ export const useJobs = () => {
         ...(filters?.status && { status: filters.status }),
       }
 
-      const response = await fetchWithAuth<JobExecutionListResponse>(`${getApiUrl()}/admin/jobs/executions`, {
+      const response = await fetchWithAuth<JobExecutionListResponse>(`${getApiUrl()}/jobs/executions`, {
         method: 'GET',
         params,
       })
@@ -126,7 +126,7 @@ export const useJobs = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; data: JobExecution }>(`${getApiUrl()}/admin/jobs/executions/${id}`, {
+      const response = await fetchWithAuth<{ success: boolean; data: JobExecution }>(`${getApiUrl()}/jobs/executions/${id}`, {
         method: 'GET',
       })
 
@@ -157,7 +157,7 @@ export const useJobs = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<JobStatusResponse>(`${getApiUrl()}/admin/jobs/status`, {
+      const response = await fetchWithAuth<JobStatusResponse>(`${getApiUrl()}/jobs/status`, {
         method: 'GET',
       })
 
@@ -190,7 +190,7 @@ export const useJobs = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; data: any; message?: string }>(`${getApiUrl()}/admin/jobs/trigger`, {
+      const response = await fetchWithAuth<{ success: boolean; data: any; message?: string }>(`${getApiUrl()}/jobs/trigger`, {
         method: 'POST',
         body: data,
       })
@@ -213,7 +213,7 @@ export const useJobs = () => {
     error.value = null
 
     try {
-      const response = await fetchWithAuth<{ success: boolean; message?: string }>(`${getApiUrl()}/admin/jobs/executions/cleanup`, {
+      const response = await fetchWithAuth<{ success: boolean; message?: string }>(`${getApiUrl()}/jobs/executions/cleanup`, {
         method: 'DELETE',
       })
 

@@ -55,7 +55,7 @@ export const useStorageAdmin = () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetchWithAuth<StorageProvidersListResponse>(`${getApiUrl()}/admin/storage/providers`, { method: 'GET' })
+      const response = await fetchWithAuth<StorageProvidersListResponse>(`${getApiUrl()}/v1/admin/storage/providers`, { method: 'GET' })
       if (response.success && response.data) {
         providers.value = response.data.providers || []
         activeProvider.value = response.data.activeProvider || null
@@ -73,7 +73,7 @@ export const useStorageAdmin = () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetchWithAuth<StorageConfigResponse>(`${getApiUrl()}/admin/storage/providers/${provider}/config`, {
+      const response = await fetchWithAuth<StorageConfigResponse>(`${getApiUrl()}/v1/admin/storage/providers/${provider}/config`, {
         method: 'PATCH',
         body: data,
       })
@@ -95,7 +95,7 @@ export const useStorageAdmin = () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetchWithAuth<StorageTestResponse>(`${getApiUrl()}/admin/storage/providers/${provider}/test`, { method: 'POST' })
+      const response = await fetchWithAuth<StorageTestResponse>(`${getApiUrl()}/v1/admin/storage/providers/${provider}/test`, { method: 'POST' })
       if (response.success && response.data) return response.data
       return null
     } catch (e: any) {
@@ -110,7 +110,7 @@ export const useStorageAdmin = () => {
     loading.value = true
     error.value = null
     try {
-      const response = await fetchWithAuth<StorageConfigResponse>(`${getApiUrl()}/admin/storage/providers/${provider}/activate`, { method: 'POST' })
+      const response = await fetchWithAuth<StorageConfigResponse>(`${getApiUrl()}/v1/admin/storage/providers/${provider}/activate`, { method: 'POST' })
       if (response.success && response.data) {
         activeProvider.value = provider
         await fetchProviders()
@@ -127,7 +127,7 @@ export const useStorageAdmin = () => {
 
   const fetchStats = async (): Promise<StorageStats | null> => {
     try {
-      const response = await fetchWithAuth<StorageStatsResponse>(`${getApiUrl()}/admin/storage/stats`, { method: 'GET' })
+      const response = await fetchWithAuth<StorageStatsResponse>(`${getApiUrl()}/v1/admin/storage/stats`, { method: 'GET' })
       if (response.success && response.data) {
         stats.value = response.data
         return response.data
