@@ -9,6 +9,8 @@ export interface Project {
   color?: string
   ownerId: string
   organizationId?: string | null
+  parentId?: string | null
+  parent?: Project | null
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -58,6 +60,7 @@ export interface CreateProjectDto {
   description?: string
   color?: string
   organizationId?: string
+  parentId?: string
 }
 
 export interface UpdateProjectDto {

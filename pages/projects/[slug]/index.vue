@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { formatDayMonth } from '~/utils/date'
 import { useProjects } from '~/modules/projects/composables/useProjects'
 import { useTasks } from '~/modules/tasks/composables/useTasks'
 import { useToast } from '~/composables/useToast'
@@ -14,12 +15,17 @@ import {
   AlertDialogTrigger,
 } from '~/components/ui/alert-dialog'
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '~/components/ui/dialog'
+import { Label } from '~/components/ui/label'
+import { Textarea } from '~/components/ui/textarea'
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '~/components/ui/select'
 import DataTable from '~/components/shared/DataTable/DataTable.vue'
 import type { ColumnDef } from '~/components/shared/DataTable/types'
-import type { Task } from '~/modules/tasks/types'
-import type { ProjectModule } from '~/modules/projects/types'
+import type { Task, BulkPositionItem } from '~/modules/tasks/types'
+import type { Project, ProjectMember, ProjectModule, CreateModuleDto } from '~/modules/projects/types'
 
 definePageMeta({
   middleware: ['auth', 'module-access'],
@@ -32,38 +38,49 @@ const slug = route.params.slug as string
 const toast = useToast()
 
 const {
-  currentProject, projectModules, taskStatuses, projectMembers, projectInvitations,
+  currentProject, childProjects, childrenLoading, projectModules, taskStatuses, projectMembers, projectInvitations,
   loading, error,
-  fetchBySlug, fetchModules, fetchStatuses, fetchMembers,
-  update, createModule, updateModule, deleteModule, createStatus, deleteStatus,
+  fetchById, fetchBySlug, fetchChildren, fetchModules, fetchStatuses, fetchMembers,
+  create: createProject, update, remove: removeProject,
+  createModule, updateModule, deleteModule, createStatus, deleteStatus,
   addMember, removeMember, inviteByEmail, fetchProjectInvitations,
 } = useProjects()
 
-const { tasks: projectTasks, loading: tasksLoading, fetchAll: fetchTasks, bulkUpdatePositions, remove: removeTask } = useTasks()
+const parentProject = ref<Project | null>(null)
+
+const { tasks: projectTasks, loading: tasksLoading, error: tasksError, fetchAll: fetchTasks, bulkUpdatePositions, remove: removeTask } = useTasks()
 
 // ── Edit project ──
-const editingName = ref(false)
+const showEditDialog = ref(false)
 const editName = ref('')
 const editDescription = ref('')
 const editColor = ref('')
+const savingProject = ref(false)
 
 const startEdit = () => {
   if (!currentProject.value) return
   editName.value = currentProject.value.name
   editDescription.value = currentProject.value.description || ''
   editColor.value = currentProject.value.color || '#6366f1'
-  editingName.value = true
+  showEditDialog.value = true
 }
 
 const saveProject = async () => {
   if (!currentProject.value || !editName.value.trim()) return
-  await update(currentProject.value.id, {
-    name: editName.value,
-    description: editDescription.value || undefined,
-    color: editColor.value,
-  })
-  editingName.value = false
-  toast.success('Proyecto actualizado')
+  savingProject.value = true
+  try {
+    await update(currentProject.value.id, {
+      name: editName.value,
+      description: editDescription.value || undefined,
+      color: editColor.value,
+    })
+    showEditDialog.value = false
+    toast.success('Proyecto actualizado')
+  } catch (e: any) {
+    toast.error(e.data?.error?.message || 'Error al actualizar proyecto')
+  } finally {
+    savingProject.value = false
+  }
 }
 
 // ── Modules ──
@@ -116,25 +133,10 @@ const countAllModules = (mods: typeof projectModules.value): number => {
   return count
 }
 
-const getModuleDepth = (mod: typeof projectModules.value[0], mods: typeof projectModules.value): number => {
-  if (!mod.parentId) return 0
-  const find = (list: typeof mods, depth: number): number => {
-    for (const m of list) {
-      if (m.id === mod.parentId) return depth + 1
-      if (m.children?.length) {
-        const found = find(m.children, depth + 1)
-        if (found >= 0) return found
-      }
-    }
-    return -1
-  }
-  return find(mods, 0)
-}
-
 const handleCreateModule = async () => {
   if (!currentProject.value || !newModuleName.value.trim()) return
   try {
-    const dto: any = { name: newModuleName.value, color: newModuleColor.value }
+    const dto: CreateModuleDto = { name: newModuleName.value, color: newModuleColor.value }
     if (submoduleParentId.value) dto.parentId = submoduleParentId.value
     await createModule(currentProject.value.id, dto)
     if (submoduleParentId.value) expandedModules.value.add(submoduleParentId.value)
@@ -247,8 +249,57 @@ const handleRemoveMember = async (userId: string) => {
   }
 }
 
+// ── Sub-projects ──
+const showCreateSubprojectDialog = ref(false)
+const newSubprojectName = ref('')
+const newSubprojectDescription = ref('')
+const newSubprojectColor = ref('#6366f1')
+const creatingSubproject = ref(false)
+
+const colorPresets = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4']
+
+const isRootProject = computed(() => !!currentProject.value && !currentProject.value.parentId)
+
+const handleCreateSubproject = async () => {
+  if (!currentProject.value || !newSubprojectName.value.trim()) return
+  creatingSubproject.value = true
+  try {
+    const project = await createProject({
+      name: newSubprojectName.value,
+      description: newSubprojectDescription.value || undefined,
+      color: newSubprojectColor.value,
+      organizationId: currentProject.value.organizationId || undefined,
+      parentId: currentProject.value.id,
+    })
+    if (project) {
+      toast.success('Sub-proyecto creado')
+      showCreateSubprojectDialog.value = false
+      newSubprojectName.value = ''
+      newSubprojectDescription.value = ''
+      newSubprojectColor.value = '#6366f1'
+      await fetchChildren(currentProject.value.id)
+    } else {
+      toast.error('Error', error.value || 'No se pudo crear el sub-proyecto')
+    }
+  } catch {
+    toast.error('Error', error.value || 'No se pudo crear el sub-proyecto')
+  } finally {
+    creatingSubproject.value = false
+  }
+}
+
+const handleDeleteSubproject = async (subproject: Project) => {
+  const success = await removeProject(subproject.id)
+  if (!success) {
+    toast.error('Error', error.value || 'No se pudo eliminar el sub-proyecto')
+    return
+  }
+  // remove() already does optimistic update on childProjects.value — no need to refetch
+  toast.success('Sub-proyecto eliminado')
+}
+
 // ── Kanban ──
-const handleBulkUpdate = async (items: import('~/modules/tasks/types').BulkPositionItem[]) => {
+const handleBulkUpdate = async (items: BulkPositionItem[]) => {
   await bulkUpdatePositions(items)
 }
 
@@ -300,7 +351,7 @@ const taskColumns: ColumnDef<Task>[] = [
     key: 'dueDate', label: 'Fecha limite', sortable: true, width: '120px', align: 'center',
     format: (value: string | null) => {
       if (!value) return '-'
-      return new Date(value).toLocaleDateString('es', { day: '2-digit', month: 'short' })
+      return formatDayMonth(value)
     },
   },
   { key: 'commentCount', label: 'Comentarios', sortable: true, width: '110px', align: 'center' },
@@ -335,6 +386,10 @@ const getModuleBreadcrumb = (task: Task): string[] => {
 
 const handleDeleteTask = async (task: Task) => {
   await removeTask(task.id)
+  if (tasksError.value) {
+    toast.error('Error', tasksError.value)
+    return
+  }
   toast.success('Tarea eliminada')
 }
 
@@ -363,18 +418,18 @@ const copyCode = (code: string) => {
 }
 
 // ── Helpers ──
-const getMemberName = (member: any): string => {
+const getMemberName = (member: ProjectMember): string => {
   if (member.user?.firstName) {
     return `${member.user.firstName} ${member.user.lastName || ''}`.trim()
   }
   return member.userId.slice(0, 12) + '...'
 }
 
-const getMemberEmail = (member: any): string | null => {
+const getMemberEmail = (member: ProjectMember): string | null => {
   return member.user?.email || null
 }
 
-const getMemberInitials = (member: any): string => {
+const getMemberInitials = (member: ProjectMember): string => {
   if (member.user?.firstName && member.user?.lastName) {
     return (member.user.firstName[0] + member.user.lastName[0]).toUpperCase()
   }
@@ -414,7 +469,15 @@ onMounted(async () => {
     if (currentProject.value.organizationId) {
       promises.push(fetchProjectInvitations(currentProject.value.id))
     }
+    // Fetch children only for root projects (no parentId)
+    if (!currentProject.value.parentId) {
+      promises.push(fetchChildren(currentProject.value.id))
+    }
     await Promise.all(promises)
+    // Fetch parent project info for sub-projects
+    if (currentProject.value.parentId) {
+      parentProject.value = await fetchById(currentProject.value.parentId)
+    }
   }
 })
 </script>
@@ -435,26 +498,28 @@ onMounted(async () => {
             class="w-3 h-3 rounded-full"
             :style="{ backgroundColor: currentProject.color }"
           />
-          <div v-if="!editingName">
+          <div>
             <div class="flex items-center gap-2">
               <h1 class="text-lg font-semibold tracking-tight leading-tight">{{ currentProject.name }}</h1>
               <Badge v-if="currentProject.systemCode" variant="secondary" class="text-[10px] px-1.5 py-0 font-mono">{{ currentProject.systemCode }}</Badge>
             </div>
-            <p v-if="currentProject.description" class="text-xs text-muted-foreground" v-html="currentProject.description" />
+            <p v-if="currentProject.description" class="text-xs text-muted-foreground">{{ currentProject.description }}</p>
             <p v-else class="text-xs text-muted-foreground">{{ currentProject.slug }}</p>
-          </div>
-          <div v-else class="space-y-2 max-w-2xl">
-            <Input v-model="editName" class="text-lg font-bold" />
-            <RichTextEditor v-model="editDescription" placeholder="Describe el proyecto..." :rows="5" />
-            <div class="flex items-center gap-2">
-              <input type="color" v-model="editColor" class="w-8 h-8 rounded cursor-pointer border-0 p-0" />
-              <Button size="sm" @click="saveProject">Guardar</Button>
-              <Button size="sm" variant="outline" @click="editingName = false">Cancelar</Button>
+            <!-- Sub-project parent link -->
+            <div v-if="currentProject.parentId && parentProject" class="flex items-center gap-1.5 mt-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
+              <span class="text-[11px] text-muted-foreground">Sub-proyecto de:</span>
+              <button
+                class="text-[11px] font-medium text-primary hover:underline"
+                @click="router.push(`/projects/${parentProject?.slug}`)"
+              >
+                {{ parentProject?.name }}
+              </button>
             </div>
           </div>
         </div>
         <div class="flex gap-2">
-          <Button v-if="!editingName" variant="outline" size="sm" @click="startEdit">Editar</Button>
+          <Button variant="outline" size="sm" @click="startEdit">Editar</Button>
           <Button v-if="currentProject.organizationId" variant="outline" size="sm" @click="router.push(`/projects/${slug}/board`)">
             Tablero
           </Button>
@@ -465,6 +530,7 @@ onMounted(async () => {
       <Tabs default-value="overview" class="w-full">
         <TabsList>
           <TabsTrigger value="overview">General</TabsTrigger>
+          <TabsTrigger v-if="isRootProject" value="subprojects">Sub-proyectos ({{ childProjects.length }})</TabsTrigger>
           <TabsTrigger value="tasks">Tareas ({{ projectTasks.length }})</TabsTrigger>
           <TabsTrigger value="board">Tablero</TabsTrigger>
           <TabsTrigger value="members">Miembros ({{ projectMembers.length }})</TabsTrigger>
@@ -581,7 +647,7 @@ onMounted(async () => {
                                 <div class="flex items-center gap-0 min-w-0">
                                   <div class="w-5 h-full flex items-center shrink-0">
                                     <svg width="16" height="20" viewBox="0 0 16 20" class="text-border shrink-0">
-                                      <path :d="childIdx < mod.children!.length - 1 ? 'M8 0 V20 M8 10 H16' : 'M8 0 V10 H16'" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                                      <path :d="childIdx < (mod.children?.length ?? 0) - 1 ? 'M8 0 V20 M8 10 H16' : 'M8 0 V10 H16'" fill="none" stroke="currentColor" stroke-width="1.5"/>
                                     </svg>
                                   </div>
                                   <button
@@ -635,8 +701,7 @@ onMounted(async () => {
                             <div v-if="child.children?.length && expandedModules.has(child.id)" class="bg-muted/20">
                               <template v-for="(grandchild, gcIdx) in child.children" :key="grandchild.id">
                                 <div
-                                  class="group/gc flex items-center justify-between pl-8 pr-2.5 py-1"
-                                  :class="{ 'border-t border-border/20': true }"
+                                  class="group/gc flex items-center justify-between pl-8 pr-2.5 py-1 border-t border-border/20"
                                 >
                                   <!-- Editing mode -->
                                   <div v-if="editingModuleId === grandchild.id" class="flex items-center gap-2 flex-1 min-w-0 pl-5">
@@ -650,7 +715,7 @@ onMounted(async () => {
                                     <div class="flex items-center gap-0 min-w-0">
                                       <div class="w-5 h-full flex items-center shrink-0">
                                         <svg width="16" height="16" viewBox="0 0 16 16" class="text-border/60 shrink-0">
-                                          <path :d="gcIdx < child.children!.length - 1 ? 'M8 0 V16 M8 8 H16' : 'M8 0 V8 H16'" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/>
+                                          <path :d="gcIdx < (child.children?.length ?? 0) - 1 ? 'M8 0 V16 M8 8 H16' : 'M8 0 V8 H16'" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/>
                                         </svg>
                                       </div>
                                       <div class="w-2 h-2 rounded-full shrink-0 ml-1" :style="{ backgroundColor: grandchild.color || '#8b5cf6', opacity: 0.7 }" />
@@ -741,6 +806,75 @@ onMounted(async () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
+
+        <!-- Tab: Sub-projects -->
+        <TabsContent v-if="isRootProject" value="subprojects">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <p class="text-sm font-semibold">Sub-proyectos ({{ childProjects.length }})</p>
+              <Button size="sm" class="h-7 text-xs" @click="showCreateSubprojectDialog = true">Nuevo Sub-proyecto</Button>
+            </div>
+
+            <!-- Loading state -->
+            <div v-if="childrenLoading" class="text-center py-12 text-muted-foreground">Cargando sub-proyectos...</div>
+
+            <!-- Empty state -->
+            <div v-else-if="childProjects.length === 0" class="text-center py-12">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-muted-foreground/40 mb-3"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="M9 13h6"/></svg>
+              <p class="text-sm text-muted-foreground">Este proyecto no tiene sub-proyectos</p>
+              <Button size="sm" class="mt-3" @click="showCreateSubprojectDialog = true">Crear sub-proyecto</Button>
+            </div>
+
+            <!-- Sub-projects grid -->
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <Card
+                v-for="sub in childProjects"
+                :key="sub.id"
+                class="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group/subcard"
+              >
+                <CardContent class="p-4">
+                  <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-2 min-w-0 flex-1" @click="router.push(`/projects/${sub.slug}`)">
+                      <div v-if="sub.color" class="w-3 h-3 rounded-full shrink-0" :style="{ backgroundColor: sub.color }" />
+                      <p class="text-sm font-semibold truncate">{{ sub.name }}</p>
+                      <Badge v-if="sub.systemCode" variant="secondary" class="text-[10px] px-1 py-0 font-mono shrink-0">{{ sub.systemCode }}</Badge>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger as-child>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          class="h-6 w-6 p-0 text-muted-foreground hover:text-destructive opacity-0 group-hover/subcard:opacity-100 transition-opacity shrink-0"
+                          @click.stop
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent @click.stop>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Eliminar sub-proyecto</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Estas seguro de eliminar "{{ sub.name }}"? Se eliminaran todas sus tareas, modulos y configuracion. Esta accion no se puede deshacer.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction @click="handleDeleteSubproject(sub)">Eliminar</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                  <p v-if="sub.description" class="text-xs text-muted-foreground mt-1 line-clamp-2" @click="router.push(`/projects/${sub.slug}`)">
+                    {{ sub.description }}
+                  </p>
+                  <div class="flex items-center gap-2 mt-2" @click="router.push(`/projects/${sub.slug}`)">
+                    <Badge variant="outline" class="text-[10px] px-1 py-0">{{ sub.slug }}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </TabsContent>
 
@@ -995,7 +1129,7 @@ onMounted(async () => {
                       :variant="inviteRole === 'viewer' ? 'default' : 'outline'"
                       @click="inviteRole = 'viewer'"
                     >
-                      Viewer
+                      Observador
                     </Button>
                   </div>
                   <Button size="sm" class="h-8" :disabled="!inviteEmail.trim() || inviting" @click="handleInvite">
@@ -1062,5 +1196,116 @@ onMounted(async () => {
         </TabsContent>
       </Tabs>
     </template>
+
+    <!-- Edit Project Dialog -->
+    <Dialog v-model:open="showEditDialog">
+      <DialogContent class="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Editar proyecto</DialogTitle>
+          <DialogDescription>
+            Modifica los datos del proyecto. Los cambios se aplican inmediatamente.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4 py-2">
+          <div class="space-y-2">
+            <Label for="edit-name">Nombre del proyecto</Label>
+            <Input id="edit-name" v-model="editName" placeholder="Nombre del proyecto" />
+          </div>
+
+          <div class="space-y-2">
+            <Label for="edit-description">Descripcion</Label>
+            <Textarea
+              id="edit-description"
+              v-model="editDescription"
+              placeholder="Describe brevemente el proyecto..."
+              :rows="3"
+              class="resize-none"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <Label for="edit-color">Color del proyecto</Label>
+            <div class="flex items-center gap-3">
+              <input
+                id="edit-color"
+                type="color"
+                v-model="editColor"
+                class="w-10 h-10 rounded-lg cursor-pointer border border-border p-0.5"
+              />
+              <span class="text-sm text-muted-foreground font-mono">{{ editColor }}</span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showEditDialog = false" :disabled="savingProject">
+            Cancelar
+          </Button>
+          <Button @click="saveProject" :disabled="!editName.trim() || savingProject">
+            {{ savingProject ? 'Guardando...' : 'Guardar cambios' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Create Sub-project Dialog -->
+    <Dialog v-model:open="showCreateSubprojectDialog">
+      <DialogContent class="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Nuevo Sub-proyecto</DialogTitle>
+          <DialogDescription>
+            Crea un sub-proyecto dentro de "{{ currentProject?.name }}".
+          </DialogDescription>
+        </DialogHeader>
+
+        <form class="space-y-4 py-2" @submit.prevent="handleCreateSubproject">
+          <div class="space-y-2">
+            <Label for="subproject-name">Nombre</Label>
+            <Input id="subproject-name" v-model="newSubprojectName" placeholder="Nombre del sub-proyecto" />
+          </div>
+
+          <div class="space-y-2">
+            <Label for="subproject-description">Descripcion (opcional)</Label>
+            <Textarea
+              id="subproject-description"
+              v-model="newSubprojectDescription"
+              placeholder="Describe brevemente el sub-proyecto..."
+              :rows="3"
+              class="resize-none"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <Label>Color</Label>
+            <div class="flex items-center gap-2">
+              <div class="flex gap-1.5">
+                <button
+                  v-for="color in colorPresets"
+                  :key="color"
+                  type="button"
+                  class="w-6 h-6 rounded-full border-2 transition-transform"
+                  :class="newSubprojectColor === color ? 'border-foreground scale-110' : 'border-transparent'"
+                  :style="{ backgroundColor: color }"
+                  @click="newSubprojectColor = color"
+                />
+              </div>
+              <input
+                type="color"
+                v-model="newSubprojectColor"
+                class="w-8 h-8 rounded cursor-pointer border-0 p-0"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="showCreateSubprojectDialog = false" :disabled="creatingSubproject">Cancelar</Button>
+            <Button type="submit" :disabled="!newSubprojectName.trim() || creatingSubproject">
+              {{ creatingSubproject ? 'Creando...' : 'Crear Sub-proyecto' }}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

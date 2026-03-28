@@ -28,7 +28,7 @@ definePageMeta({
   layout: 'sidebar-vertical',
 })
 
-const { projects, loading, error, fetchAll, create } = useProjects()
+const { projects, loading, childrenLoading, error, fetchAllWithChildren, create } = useProjects()
 const { organizations, fetchAll: fetchOrgs } = useOrganizations()
 const toast = useToast()
 const router = useRouter()
@@ -41,10 +41,28 @@ const newProjectOrgId = ref('')
 
 const colorPresets = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4']
 
+const childCountMap = ref<Record<string, number>>({})
+
 const teamProjects = computed(() => projects.value.filter(p => p.organizationId))
 
+const buildChildCountMap = (allProjects: typeof projects.value) => {
+  const countMap: Record<string, number> = {}
+  for (const p of allProjects) {
+    if (p.parentId) {
+      countMap[p.parentId] = (countMap[p.parentId] || 0) + 1
+    }
+  }
+  childCountMap.value = countMap
+}
+
+const refreshProjects = async () => {
+  const allProjects = await fetchAllWithChildren()
+  buildChildCountMap(allProjects)
+}
+
 onMounted(async () => {
-  await Promise.all([fetchAll(), fetchOrgs()])
+  await fetchOrgs()
+  await refreshProjects()
 })
 
 const handleCreate = async () => {
@@ -64,7 +82,7 @@ const handleCreate = async () => {
     newProjectDescription.value = ''
     newProjectColor.value = '#6366f1'
     newProjectOrgId.value = ''
-    await fetchAll()
+    await refreshProjects()
   } else {
     toast.error('Error', error.value || 'No se pudo crear el proyecto')
   }
@@ -102,7 +120,7 @@ const getOrgName = (orgId: string | null | undefined) => {
       {{ error }}
     </div>
 
-    <div v-if="loading" class="text-center py-8 text-muted-foreground">Cargando...</div>
+    <div v-if="loading || childrenLoading" class="text-center py-8 text-muted-foreground">Cargando...</div>
 
     <div v-else-if="teamProjects.length === 0" class="text-center py-8">
       <p class="text-muted-foreground">No tienes proyectos de equipo</p>
@@ -113,20 +131,24 @@ const getOrgName = (orgId: string | null | undefined) => {
       <Card
         v-for="project in teamProjects"
         :key="project.id"
-        class="hover:shadow-md transition-shadow"
+        class="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
+        @click="goToProject(project.slug)"
       >
         <CardContent class="p-4">
-          <div class="flex items-center gap-2 cursor-pointer" @click="goToProject(project.slug)">
+          <div class="flex items-center gap-2">
             <div v-if="project.color" class="w-3 h-3 rounded-full" :style="{ backgroundColor: project.color }" />
             <p class="text-sm font-semibold">{{ project.name }}</p>
             <span v-if="project.systemCode" class="text-[10px] text-muted-foreground font-mono">{{ project.systemCode }}</span>
           </div>
-          <p v-if="project.description" class="text-xs text-muted-foreground mt-1 cursor-pointer" @click="goToProject(project.slug)">
-            <span v-html="project.description" />
+          <p v-if="project.description" class="text-xs text-muted-foreground mt-1">
+            {{ project.description }}
           </p>
           <div class="flex items-center gap-2 mt-2">
             <Badge variant="outline" class="text-[10px] px-1 py-0">{{ getOrgName(project.organizationId) }}</Badge>
-            <Button size="sm" variant="secondary" class="h-6 text-xs" @click="goToBoard(project.slug)">
+            <Badge v-if="childCountMap[project.id]" variant="secondary" class="text-[10px] px-1.5 py-0">
+              {{ childCountMap[project.id] }} sub-proyecto{{ childCountMap[project.id] > 1 ? 's' : '' }}
+            </Badge>
+            <Button size="sm" variant="secondary" class="h-6 text-xs" @click.stop="goToBoard(project.slug)">
               Tablero
             </Button>
           </div>
@@ -184,7 +206,7 @@ const getOrgName = (orgId: string | null | undefined) => {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" @click="showCreateDialog = false">Cancelar</Button>
-            <Button type="submit" :disabled="!newProjectName.trim() || !newProjectOrgId || loading">Crear</Button>
+            <Button type="submit" :disabled="!newProjectName.trim() || !newProjectOrgId || loading || childrenLoading">Crear</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -14,12 +14,14 @@ export const useProjects = () => {
   const { accessToken } = useAuth()
   const projects = ref<Project[]>([])
   const currentProject = ref<Project | null>(null)
+  const childProjects = ref<Project[]>([])
   const projectMembers = ref<ProjectMember[]>([])
   const projectInvitations = ref<ProjectInvitation[]>([])
   const projectModules = ref<ProjectModule[]>([])
   const taskStatuses = ref<TaskStatus[]>([])
   const globalStatuses = ref<TaskStatus[]>([])
   const loading = ref(false)
+  const childrenLoading = ref(false)
   const error = ref<string | null>(null)
 
   const headers = () => ({
@@ -48,6 +50,16 @@ export const useProjects = () => {
     }
   }
 
+  const fetchById = async (id: string): Promise<Project | null> => {
+    try {
+      const res = await $fetch<{ success: boolean; data: Project }>(`${getApiUrl()}/projects/${id}`, { headers: headers() })
+      return res.data
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Error cargando proyecto'
+      return null
+    }
+  }
+
   const fetchBySlug = async (slug: string) => {
     loading.value = true
     error.value = null
@@ -70,7 +82,10 @@ export const useProjects = () => {
         body: dto,
         headers: headers(),
       })
-      projects.value.push(res.data)
+      // Only add to root projects list if it's not a sub-project
+      if (!dto.parentId) {
+        projects.value.push(res.data)
+      }
       return res.data
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error creando proyecto'
@@ -99,15 +114,58 @@ export const useProjects = () => {
     }
   }
 
-  const remove = async (id: string) => {
+  const remove = async (id: string): Promise<boolean> => {
     loading.value = true
+    error.value = null
     try {
       await $fetch(`${getApiUrl()}/projects/${id}`, { method: 'DELETE', headers: headers() })
       projects.value = projects.value.filter(p => p.id !== id)
+      childProjects.value = childProjects.value.filter(p => p.id !== id)
+      return true
     } catch (e: any) {
       error.value = e.data?.error?.message || 'Error eliminando proyecto'
+      return false
     } finally {
       loading.value = false
+    }
+  }
+
+  const fetchChildren = async (projectId: string) => {
+    error.value = null
+    childrenLoading.value = true
+    try {
+      const res = await $fetch<{ success: boolean; data: Project[] }>(`${getApiUrl()}/projects/${projectId}/children`, { headers: headers() })
+      childProjects.value = res.data
+      return res.data
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Error cargando sub-proyectos'
+      return []
+    } finally {
+      childrenLoading.value = false
+    }
+  }
+
+  const fetchAllWithChildren = async (params?: { organizationId?: string; personal?: boolean }) => {
+    error.value = null
+    childrenLoading.value = true
+    try {
+      const query: Record<string, string> = { includeChildren: 'true' }
+      if (params?.organizationId) query.organizationId = params.organizationId
+      if (params?.personal) query.personal = 'true'
+
+      const res = await $fetch<{ success: boolean; data: Project[] }>(`${getApiUrl()}/projects`, {
+        headers: headers(),
+        params: query,
+      })
+      const allProjects = res.data
+      // Populate projects with root-only (no parentId) for display
+      projects.value = allProjects.filter(p => !p.parentId)
+      return allProjects
+    } catch (e: any) {
+      error.value = e.data?.error?.message || 'Error cargando proyectos con hijos'
+      return []
+    } finally {
+      childrenLoading.value = false
     }
   }
 
@@ -301,15 +359,20 @@ export const useProjects = () => {
   return {
     projects,
     currentProject,
+    childProjects,
     projectMembers,
     projectInvitations,
     projectModules,
     taskStatuses,
     globalStatuses,
     loading,
+    childrenLoading,
     error,
     fetchAll,
+    fetchAllWithChildren,
+    fetchById,
     fetchBySlug,
+    fetchChildren,
     create,
     update,
     remove,
