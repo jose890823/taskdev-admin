@@ -10,11 +10,11 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy package files
-COPY package.json pnpm-lock.yaml* ./
+# Copy package files (pnpm-workspace.yaml contiene los overrides referenciados en el lockfile)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies (--ignore-scripts evita que postinstall:nuxt prepare falle sin la app)
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # ============================================
 # Stage 2: Builder
