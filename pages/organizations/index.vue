@@ -84,7 +84,7 @@ const goToOrg = (id: string) => {
       <Card
         v-for="org in organizations"
         :key="org.id"
-        class="cursor-pointer hover:shadow-md transition-shadow"
+        class="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
         @click="goToOrg(org.id)"
       >
         <CardContent class="p-4">
@@ -92,7 +92,7 @@ const goToOrg = (id: string) => {
             <p class="text-sm font-semibold">{{ org.name }}</p>
             <span v-if="org.systemCode" class="text-[10px] text-muted-foreground font-mono">{{ org.systemCode }}</span>
           </div>
-          <p v-if="org.description" class="text-xs text-muted-foreground mt-1" v-html="org.description" />
+          <p v-if="org.description" class="text-xs text-muted-foreground mt-1 line-clamp-2">{{ stripHtml(org.description) }}</p>
           <p v-else class="text-xs text-muted-foreground mt-1">{{ org.slug }}</p>
         </CardContent>
       </Card>

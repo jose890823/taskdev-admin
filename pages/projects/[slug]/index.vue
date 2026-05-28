@@ -503,7 +503,7 @@ onMounted(async () => {
               <h1 class="text-lg font-semibold tracking-tight leading-tight">{{ currentProject.name }}</h1>
               <Badge v-if="currentProject.systemCode" variant="secondary" class="text-[10px] px-1.5 py-0 font-mono">{{ currentProject.systemCode }}</Badge>
             </div>
-            <p v-if="currentProject.description" class="text-xs text-muted-foreground">{{ currentProject.description }}</p>
+            <p v-if="currentProject.description" class="text-xs text-muted-foreground">{{ stripHtml(currentProject.description) }}</p>
             <p v-else class="text-xs text-muted-foreground">{{ currentProject.slug }}</p>
             <!-- Sub-project parent link -->
             <div v-if="currentProject.parentId && parentProject" class="flex items-center gap-1.5 mt-1">
@@ -867,7 +867,7 @@ onMounted(async () => {
                     </AlertDialog>
                   </div>
                   <p v-if="sub.description" class="text-xs text-muted-foreground mt-1 line-clamp-2" @click="router.push(`/projects/${sub.slug}`)">
-                    {{ sub.description }}
+                    {{ stripHtml(sub.description) }}
                   </p>
                   <div class="flex items-center gap-2 mt-2" @click="router.push(`/projects/${sub.slug}`)">
                     <Badge variant="outline" class="text-[10px] px-1 py-0">{{ sub.slug }}</Badge>

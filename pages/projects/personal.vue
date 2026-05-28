@@ -90,7 +90,7 @@ const goToProject = (slug: string) => {
             <div v-if="project.color" class="w-3 h-3 rounded-full" :style="{ backgroundColor: project.color }" />
             <p class="text-sm font-semibold">{{ project.name }}</p>
           </div>
-          <p v-if="project.description" class="text-xs text-muted-foreground mt-1"><span v-html="project.description" /></p>
+          <p v-if="project.description" class="text-xs text-muted-foreground mt-1 line-clamp-2">{{ stripHtml(project.description) }}</p>
           <Badge variant="outline" class="text-[10px] px-1 py-0 mt-1">Personal</Badge>
         </CardContent>
       </Card>

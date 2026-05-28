@@ -140,8 +140,8 @@ const getOrgName = (orgId: string | null | undefined) => {
             <p class="text-sm font-semibold">{{ project.name }}</p>
             <span v-if="project.systemCode" class="text-[10px] text-muted-foreground font-mono">{{ project.systemCode }}</span>
           </div>
-          <p v-if="project.description" class="text-xs text-muted-foreground mt-1">
-            {{ project.description }}
+          <p v-if="project.description" class="text-xs text-muted-foreground mt-1 line-clamp-2">
+            {{ stripHtml(project.description) }}
           </p>
           <div class="flex items-center gap-2 mt-2">
             <Badge variant="outline" class="text-[10px] px-1 py-0">{{ getOrgName(project.organizationId) }}</Badge>
