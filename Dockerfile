@@ -8,7 +8,7 @@ FROM node:24-alpine AS deps
 WORKDIR /app
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
 
 # Copy package files (pnpm-workspace.yaml contiene los overrides referenciados en el lockfile)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -22,7 +22,7 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
