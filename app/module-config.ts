@@ -59,6 +59,16 @@ export const modules: ModuleConfig[] = [
     allowedRoles: ['super_admin', 'user'],
     group: 'personal',
   },
+  {
+    name: 'api-keys',
+    enabled: true,
+    route: '/api-keys',
+    icon: 'key-round',
+    iconColor: '#14b8a6',
+    label: 'API Keys',
+    allowedRoles: ['super_admin', 'user'],
+    group: 'personal',
+  },
 
   // --- Equipos ---
   {

@@ -1,0 +1,81 @@
+schema: spec-driven
+
+context: |
+  Project: taskhub-admin.
+  Stack: Nuxt 3.21.2, Vue 3.5.31, TypeScript 5.9.3, Tailwind CSS, shadcn-vue.
+  Architecture: SPA with SSR disabled; domain modules, composables, and direct API calls.
+  Conventions: script setup, typed props/emits, composables instead of Pinia, useCookie for auth state.
+  Testing: Vitest 3.2.4 with happy-dom; unit coverage is configured; no integration or E2E suite is configured.
+  Persistence: hybrid OpenSpec plus Engram.
+  Strict TDD: enabled because the project-root test command covers the only discovered project.
+
+project: taskhub-admin
+strict_tdd: true
+delivery_strategy: ask-on-risk
+review_budget_lines: 400
+
+projects:
+  - path: .
+    stack: Nuxt 3.21.2 + Vue 3.5.31 + TypeScript 5.9.3
+    test_command: pnpm run test -- --run
+    test_framework: Vitest 3.2.4 with happy-dom
+    coverage_command: pnpm run test:coverage -- --run
+    typecheck_command: pnpm exec vue-tsc --noEmit
+    lint_command: null
+    format_command: null
+
+testing:
+  detected: 2026-09-16
+  workspace_test_command: pnpm run test -- --run
+  projects:
+    - path: .
+      stack: Nuxt 3.21.2 + Vue 3.5.31 + TypeScript 5.9.3
+      test_command: pnpm run test -- --run
+      framework: Vitest 3.2.4 with happy-dom
+      test_layers:
+        unit: true
+        integration: false
+        e2e: false
+      coverage:
+        available: true
+        command: pnpm run test:coverage -- --run
+        latest_result: "4 files and 19 tests passed; 2.94% statements, 2.94% lines"
+      quality:
+        linter:
+          available: false
+          command: null
+          evidence: package.json has no lint script or configured linter.
+        type_checker:
+          available: true
+          command: pnpm exec vue-tsc --noEmit
+          latest_result: failing_with_existing_errors
+        formatter:
+          available: false
+          command: null
+          evidence: no formatter script or formatter configuration detected.
+
+rules:
+  proposal:
+    - Include a rollback plan for risky changes.
+  specs:
+    - Use Given/When/Then scenarios.
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY).
+  design:
+    - Include sequence diagrams for complex flows.
+    - Document architecture decisions with rationale.
+  tasks:
+    - Group work by phase and use hierarchical numbering.
+    - Keep tasks completable in one session.
+  apply:
+    guidelines:
+      - Follow existing Nuxt, Vue, TypeScript, composable, and shadcn-vue patterns.
+    tdd: true
+    test_command: pnpm run test -- --run
+  verify:
+    test_command: pnpm run test -- --run
+    build_command: pnpm run build
+    typecheck_command: pnpm exec vue-tsc --noEmit
+    coverage_command: pnpm run test:coverage -- --run
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas.

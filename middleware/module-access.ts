@@ -42,6 +42,7 @@ function getModuleNameFromPath(path: string): string | null {
     '/webhooks': 'webhooks',
     '/feature-flags': 'feature-flags',
     // TaskHub
+    '/api-keys': 'api-keys',
     '/organizations': 'organizations',
     '/projects/personal': 'personal-projects',
     '/projects': 'projects',
@@ -57,3 +58,5 @@ function getModuleNameFromPath(path: string): string | null {
 
   return null
 }
+
+export { getModuleNameFromPath }
