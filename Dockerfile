@@ -10,12 +10,8 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
 
-# Copy package files
-# (pnpm-workspace.yaml se omite a propósito: contiene overrides de seguridad
-# que no están registrados en el lockfile actual; copiarlo rompe --frozen-lockfile.
-# Para sincronizar, regenerar el lockfile con `pnpm install --no-frozen-lockfile`
-# y recién entonces copiarlo aquí.)
-COPY package.json pnpm-lock.yaml ./
+# Copy package files and the workspace override configuration referenced by the lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Install dependencies (--ignore-scripts evita que postinstall:nuxt prepare falle sin la app)
 RUN pnpm install --frozen-lockfile --ignore-scripts

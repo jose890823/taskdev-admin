@@ -123,6 +123,26 @@ const route = useRoute()
 const notificationPanelOpen = ref(false)
 const { isUuid, getMetaForUuid, truncateUuid } = useBreadcrumbMeta()
 
+// Map de nombres legibles para breadcrumbs
+const routeLabels: Record<string, string> = {
+  projects: 'Proyectos',
+  organizations: 'Organizaciones',
+  tasks: 'Tareas',
+  users: 'Usuarios',
+  security: 'Seguridad',
+  storage: 'Almacenamiento',
+  cache: 'Cache',
+  jobs: 'Jobs',
+  webhooks: 'Webhooks',
+  'feature-flags': 'Feature Flags',
+  i18n: 'Traducciones',
+  notifications: 'Notificaciones',
+  'api-keys': 'API Keys',
+  personal: 'Personales',
+  daily: 'Diarias',
+  invite: 'Invitacion',
+}
+
 // Generar breadcrumbs dinamicamente desde la ruta
 const breadcrumbs = computed(() => {
   const paths = route.path.split('/').filter(Boolean)
@@ -141,8 +161,12 @@ const breadcrumbs = computed(() => {
         uuid: path,
       })
     } else {
+      // Use route name from document title or page meta if available
+      const label = routeLabels[path]
+        || (document?.title?.includes(path) ? path : null)
+        || path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' ')
       crumbs.push({
-        label: path.charAt(0).toUpperCase() + path.slice(1),
+        label,
         href: currentPath,
         isUuid: false,
       })

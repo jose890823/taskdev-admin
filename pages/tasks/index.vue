@@ -214,7 +214,7 @@ const getModuleBreadcrumb = (task: Task): string[] => {
 
 // ── Table columns ──
 const columns: ColumnDef<Task>[] = [
-  { key: 'status', label: '', width: '40px', sortable: false, searchable: false },
+  { key: 'status', label: 'Estado', width: '130px', sortable: false, searchable: false },
   { key: 'title', label: 'Titulo', sortable: true, searchable: true },
   { key: 'systemCode', label: 'Codigo', sortable: true, width: '200px', searchable: true },
   { key: 'module', label: 'Modulo', sortable: false, searchable: false, width: '200px' },
@@ -393,10 +393,11 @@ const handleCreate = async () => {
       :row-clickable="true"
       @row-click="handleRowClick"
     >
-      <!-- Status dot -->
+      <!-- Status badge -->
       <template #cell-status="{ row }">
-        <div class="flex justify-center">
-          <div class="w-2.5 h-2.5 rounded-full" :class="row.completedAt ? 'bg-green-500' : 'bg-gray-400'" />
+        <div class="flex items-center gap-1.5">
+          <div class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: row.status?.color || (row.completedAt ? '#22c55e' : '#6b7280') }" />
+          <span class="text-xs truncate">{{ row.status?.name || (row.completedAt ? 'Completado' : 'Sin estado') }}</span>
         </div>
       </template>
 

@@ -44,6 +44,7 @@ const props = withDefaults(defineProps<DataTableProps<T>>(), {
   searchPlaceholder: 'Buscar...',
   loading: false,
   emptyMessage: 'No hay datos disponibles',
+  error: null,
   rowClickable: false,
 })
 
@@ -298,7 +299,16 @@ const visibleColumns = computed(() => props.columns.filter((col) => !col.hidden)
             <TableCell :colspan="visibleColumns.length" class="text-center py-8">
               <div class="flex items-center justify-center gap-2">
                 <Loader2 class="h-5 w-5 animate-spin" />
-                <span>Cargando...</span>
+                <span>{{ $t('common.loading') }}</span>
+              </div>
+            </TableCell>
+          </TableRow>
+
+          <!-- Estado de error -->
+          <TableRow v-else-if="error">
+            <TableCell :colspan="visibleColumns.length" class="text-center py-8">
+              <div class="flex flex-col items-center justify-center gap-2 text-destructive">
+                <span>{{ error }}</span>
               </div>
             </TableCell>
           </TableRow>

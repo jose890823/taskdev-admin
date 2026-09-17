@@ -141,6 +141,7 @@ import {
   FolderIcon,
   FolderKanbanIcon,
   CalendarCheckIcon,
+  KeyRoundIcon,
 } from 'lucide-vue-next'
 import { getGroupedModulesForRole, moduleGroupConfig } from '~/app/module-config'
 import type { ModuleGroup, ModuleConfig } from '~/app/module-config'
@@ -182,6 +183,7 @@ const iconMap: Record<string, any> = {
   folder: FolderIcon,
   'folder-kanban': FolderKanbanIcon,
   'calendar-check': CalendarCheckIcon,
+  'key-round': KeyRoundIcon,
 }
 
 const getModuleIcon = (icon?: string) => {

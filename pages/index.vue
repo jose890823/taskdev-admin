@@ -85,7 +85,7 @@ const priorityBadgeClass = (priority: string) => {
       <template v-else>
         <!-- Summary Cards -->
         <div class="grid gap-3 grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card class="cursor-pointer hover:border-primary/50 transition-all" @click="navigateTo('/organizations')">
             <CardContent class="flex items-center justify-between p-4">
               <div>
                 <p class="text-xs font-medium text-muted-foreground">Organizaciones</p>
@@ -96,7 +96,7 @@ const priorityBadgeClass = (priority: string) => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card class="cursor-pointer hover:border-primary/50 transition-all" @click="navigateTo('/projects')">
             <CardContent class="flex items-center justify-between p-4">
               <div>
                 <p class="text-xs font-medium text-muted-foreground">Proyectos</p>
@@ -107,7 +107,7 @@ const priorityBadgeClass = (priority: string) => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card class="cursor-pointer hover:border-primary/50 transition-all" @click="navigateTo('/tasks')">
             <CardContent class="flex items-center justify-between p-4">
               <div>
                 <p class="text-xs font-medium text-muted-foreground">Tareas Pendientes</p>
@@ -118,7 +118,7 @@ const priorityBadgeClass = (priority: string) => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card class="cursor-pointer hover:border-primary/50 transition-all" @click="navigateTo('/tasks')">
             <CardContent class="flex items-center justify-between p-4">
               <div>
                 <p class="text-xs font-medium text-muted-foreground">Completadas</p>

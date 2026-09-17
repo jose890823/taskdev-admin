@@ -59,6 +59,8 @@ export interface DataTableProps<T = any> {
   loading?: boolean
   /** Mensaje cuando no hay datos */
   emptyMessage?: string
+  /** Mensaje de error a mostrar (cuando falla la carga) */
+  error?: string | null
   /** Función para obtener la clave única de cada fila */
   rowKey?: string | ((row: T) => string | number)
   /** Clase personalizada para filas */

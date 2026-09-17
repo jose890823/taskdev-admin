@@ -1,7 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
-  devtools: { enabled: true },
+  devtools: { enabled: process.env.NODE_ENV !== 'production' },
 
   // Desactivar SSR - El admin es privado, no necesita SEO
   // Esto elimina todos los errores de hydration mismatch
@@ -25,6 +25,12 @@ export default defineNuxtConfig({
   },
 
   nitro: {},
+
+  vite: {
+    esbuild: {
+      drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+    },
+  },
 
   modules: [
     '@nuxtjs/tailwindcss',

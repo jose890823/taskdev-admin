@@ -59,6 +59,27 @@ const changeDate = async (date: string) => {
   await fetchDailyTasks(date)
 }
 
+const goToPrevDay = () => {
+  const d = new Date(selectedDate.value)
+  d.setDate(d.getDate() - 1)
+  changeDate(d.toISOString().split('T')[0])
+}
+
+const goToNextDay = () => {
+  const d = new Date(selectedDate.value)
+  d.setDate(d.getDate() + 1)
+  changeDate(d.toISOString().split('T')[0])
+}
+
+const goToToday = () => changeDate(today)
+
+const isToday = computed(() => selectedDate.value === today)
+
+const formattedDate = computed(() => {
+  const d = new Date(selectedDate.value + 'T12:00:00')
+  return d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+})
+
 const toggleComplete = async (task: any) => {
   const isCompleted = !!task.completedAt
   if (isCompleted) {
@@ -112,7 +133,16 @@ const completedCount = computed(() => tasks.value.filter(t => t.completedAt).len
         </p>
       </div>
       <div class="flex gap-2 items-center">
-        <Input type="date" :model-value="selectedDate" class="w-auto h-8 text-sm" @update:model-value="changeDate" />
+        <Button variant="ghost" size="sm" class="h-8 w-8 p-0" @click="goToPrevDay">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </Button>
+        <div class="flex items-center gap-2">
+          <Input type="date" :model-value="selectedDate" class="w-auto h-8 text-sm" @update:model-value="changeDate" />
+          <Button v-if="!isToday" variant="outline" size="sm" class="h-8 text-xs" @click="goToToday">Hoy</Button>
+        </div>
+        <Button variant="ghost" size="sm" class="h-8 w-8 p-0" @click="goToNextDay">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </Button>
         <Button size="sm" @click="showCreateDialog = true">Nueva Tarea</Button>
       </div>
     </div>

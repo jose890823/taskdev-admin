@@ -26,6 +26,9 @@ logs
 # Test coverage
 coverage
 
+# SDD registry
+.atl/
+
 # Archivos temporales
 files/
 scripts/
