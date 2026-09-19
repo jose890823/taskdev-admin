@@ -28,6 +28,7 @@ coverage
 
 # SDD registry
 .atl/
+.codegraph/
 
 # Archivos temporales
 files/
