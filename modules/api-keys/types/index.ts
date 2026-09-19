@@ -3,18 +3,44 @@ export type ApiKeyExpiryDays = 30 | 90 | 180 | 365
 export type ApiKeyScope =
   | 'tasks:read'
   | 'tasks:write'
-  | 'projects:read'
-  | 'projects:write'
   | 'comments:read'
   | 'comments:write'
+  | 'notifications:read'
+  | 'notifications:write'
+  | 'activity:read'
+  | 'search:read'
+  | 'projects:read'
+  | 'projects:write'
+  | 'project-members:read'
+  | 'project-members:write'
+  | 'project-modules:read'
+  | 'project-modules:write'
+  | 'task-statuses:read'
+  | 'task-statuses:write'
+  | 'organizations:read'
+  | 'invitations:read'
+  | 'invitations:write'
 
 export const API_KEY_SCOPES: readonly ApiKeyScope[] = [
   'tasks:read',
   'tasks:write',
-  'projects:read',
-  'projects:write',
   'comments:read',
   'comments:write',
+  'notifications:read',
+  'notifications:write',
+  'activity:read',
+  'search:read',
+  'projects:read',
+  'projects:write',
+  'project-members:read',
+  'project-members:write',
+  'project-modules:read',
+  'project-modules:write',
+  'task-statuses:read',
+  'task-statuses:write',
+  'organizations:read',
+  'invitations:read',
+  'invitations:write',
 ]
 
 export const API_KEY_EXPIRY_DAYS: readonly ApiKeyExpiryDays[] = [30, 90, 180, 365]
