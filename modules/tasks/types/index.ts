@@ -1,5 +1,37 @@
 export type TaskType = 'project' | 'daily'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
+export type TaskAiUsageStatus = 'recorded' | 'not_registered' | 'partial' | 'not_applicable'
+export type TaskAiTokenCount = number | string | null
+
+export interface TaskAiUsageSummary {
+  status: TaskAiUsageStatus
+  executionCount: number
+  inputTokens: TaskAiTokenCount
+  outputTokens: TaskAiTokenCount
+  totalTokens: TaskAiTokenCount
+  confirmedInputTokens: TaskAiTokenCount
+  confirmedOutputTokens: TaskAiTokenCount
+  confirmedTotalTokens: TaskAiTokenCount
+  reasonCodes: string[]
+  reasons: string[]
+}
+
+export interface TaskAiUsageExecution {
+  id: string
+  taskId: string
+  provider?: string | null
+  model?: string | null
+  source?: string | null
+  executionId?: string | null
+  inputTokens: TaskAiTokenCount
+  outputTokens: TaskAiTokenCount
+  totalTokens: TaskAiTokenCount
+  status: TaskAiUsageStatus
+  reasonCode?: string | null
+  reason?: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 export interface TaskAssignee {
   id: string
@@ -33,6 +65,7 @@ export interface Task {
   hasUnreadComments?: boolean
   createdAt: string
   updatedAt: string
+  aiUsage?: TaskAiUsageSummary
 }
 
 export interface CommentAuthor {

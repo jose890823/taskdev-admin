@@ -22,7 +22,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '~/components/ui/select'
-import type { TaskAssignee } from '~/modules/tasks/types'
+import type { TaskAiUsageSummary, TaskAssignee } from '~/modules/tasks/types'
 import type { ProjectModule } from '~/modules/projects/types'
 
 definePageMeta({
@@ -151,6 +151,30 @@ const currentProjectName = computed(() => {
   if (!currentTask.value?.projectId) return null
   return projects.value.find(p => p.id === currentTask.value?.projectId)?.name || null
 })
+
+const defaultAiUsageSummary: TaskAiUsageSummary = {
+  status: 'not_registered',
+  executionCount: 0,
+  inputTokens: null,
+  outputTokens: null,
+  totalTokens: null,
+  confirmedInputTokens: null,
+  confirmedOutputTokens: null,
+  confirmedTotalTokens: null,
+  reasonCodes: ['no_usage_recorded'],
+  reasons: ['No AI usage has been registered for this task.'],
+}
+
+const aiUsageSummary = computed(() => currentTask.value?.aiUsage || defaultAiUsageSummary)
+
+const aiUsageStatusLabels: Record<TaskAiUsageSummary['status'], string> = {
+  recorded: 'Registrado',
+  not_registered: 'No registrado',
+  partial: 'Parcial',
+  not_applicable: 'No aplica',
+}
+
+const formatTokenCount = (value: number | string | null) => value === null ? 'No disponible' : String(value)
 
 // Build the full path for the current module (walking up the tree)
 const currentModulePath = computed(() => {
@@ -708,6 +732,47 @@ const getInitials = (assignee: TaskAssignee) => {
                     </Button>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <!-- AI usage summary (read-only; usage is reported by authorized clients) -->
+          <Card>
+            <CardContent class="p-4 space-y-3">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-semibold">Uso de IA</p>
+                  <p class="text-xs text-muted-foreground">Ejecuciones reportadas para esta tarea</p>
+                </div>
+                <Badge variant="outline">{{ aiUsageStatusLabels[aiUsageSummary.status] }}</Badge>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <p class="text-muted-foreground">Ejecuciones</p>
+                  <p class="font-medium">{{ aiUsageSummary.executionCount }}</p>
+                </div>
+                <div>
+                  <p class="text-muted-foreground">Entrada</p>
+                  <p class="font-medium">{{ formatTokenCount(aiUsageSummary.inputTokens) }}</p>
+                </div>
+                <div>
+                  <p class="text-muted-foreground">Salida</p>
+                  <p class="font-medium">{{ formatTokenCount(aiUsageSummary.outputTokens) }}</p>
+                </div>
+                <div>
+                  <p class="text-muted-foreground">Total</p>
+                  <p class="font-medium">{{ formatTokenCount(aiUsageSummary.totalTokens) }}</p>
+                </div>
+              </div>
+              <p
+                v-if="aiUsageSummary.totalTokens === null && aiUsageSummary.confirmedTotalTokens !== null"
+                class="text-xs text-muted-foreground"
+              >
+                Tokens confirmados en ejecuciones registradas: {{ formatTokenCount(aiUsageSummary.confirmedTotalTokens) }}
+              </p>
+              <div v-if="aiUsageSummary.reasons.length" class="space-y-1 text-xs text-muted-foreground">
+                <p class="font-medium text-foreground">Motivo</p>
+                <p v-for="reason in aiUsageSummary.reasons" :key="reason">{{ reason }}</p>
               </div>
             </CardContent>
           </Card>
