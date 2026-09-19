@@ -53,12 +53,20 @@ const actionLoading = ref(false)
 const copied = ref(false)
 
 const isFormValid = computed(() => Boolean(
-  form.name.trim() && form.projectId && form.scopes.length >= 1 && form.scopes.length <= MAX_API_KEY_SCOPES && API_KEY_EXPIRY_DAYS.includes(form.expirationDays),
+  form.name.trim()
+  && form.projectId
+  && form.scopes.length >= 1
+  && form.scopes.length <= MAX_API_KEY_SCOPES
+  && form.scopes.every(scope => API_KEY_SCOPES.includes(scope))
+  && API_KEY_EXPIRY_DAYS.includes(form.expirationDays),
 ))
 
 const statusLabels = { active: 'Activa', expired: 'Expirada', revoked: 'Revocada' } as const
 const statusVariants = { active: 'default', expired: 'secondary', revoked: 'destructive' } as const
-const areAllScopesSelected = computed(() => form.scopes.length === MAX_API_KEY_SCOPES)
+const areAllScopesSelected = computed(() => (
+  form.scopes.length === API_KEY_SCOPES.length
+  && API_KEY_SCOPES.every(scope => form.scopes.includes(scope))
+))
 
 const safeError = computed(() => formError.value || error.value)
 const isEditing = computed(() => Boolean(editingKey.value))
@@ -117,8 +125,8 @@ const toggleScope = (scope: ApiKeyScope, checked: boolean) => {
   if (!checked) form.scopes = form.scopes.filter(value => value !== scope)
 }
 
-const selectMaximumScopes = () => {
-  form.scopes = [...API_KEY_SCOPES.slice(0, MAX_API_KEY_SCOPES)]
+const selectAllScopes = () => {
+  form.scopes = [...API_KEY_SCOPES]
 }
 
 const clearScopes = () => {
@@ -262,8 +270,8 @@ const goToPage = async (page: number) => {
           <div class="space-y-2"><Label for="project-id">Proyecto</Label><Select id="project-id" v-model="form.projectId"><SelectTrigger><SelectValue placeholder="Selecciona un proyecto" /></SelectTrigger><SelectContent><SelectItem v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</SelectItem></SelectContent></Select></div>
           <div v-if="isSuperAdmin" class="space-y-2"><Label for="owner-id">Propietario (autorizado por el servidor)</Label><Select id="owner-id" v-model="form.ownerId"><SelectTrigger><SelectValue placeholder="Predeterminado del servidor" /></SelectTrigger><SelectContent><SelectItem v-for="owner in users" :key="owner.id" :value="owner.id">{{ owner.firstName }} {{ owner.lastName }} ({{ owner.email }})</SelectItem></SelectContent></Select></div>
           <div class="space-y-2"><Label for="expiry-days">Expiración</Label><Select id="expiry-days" v-model="form.expirationDays"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem v-for="days in API_KEY_EXPIRY_DAYS" :key="days" :value="days">{{ days }} días</SelectItem></SelectContent></Select></div>
-          <fieldset class="space-y-2"><div class="flex items-center justify-between gap-2"><legend class="text-sm font-medium">Permisos (scopes)</legend><div class="flex gap-2"><Button type="button" variant="ghost" size="sm" @click="selectMaximumScopes">{{ areAllScopesSelected ? 'Máximo seleccionado' : `Seleccionar máximo (${MAX_API_KEY_SCOPES})` }}</Button><Button type="button" variant="ghost" size="sm" @click="clearScopes">Limpiar</Button></div></div><p class="text-xs text-muted-foreground">Puedes seleccionar hasta {{ MAX_API_KEY_SCOPES }} permisos.</p><label v-for="scope in API_KEY_SCOPES" :key="scope" class="flex items-center gap-2 text-sm"><Checkbox :model-value="form.scopes.includes(scope)" :value="scope" @update:model-value="checked => toggleScope(scope, Boolean(checked))" />{{ scope }}</label></fieldset>
-          <DialogDescription>Selecciona un proyecto accesible, de uno a seis permisos aprobados y una expiración válida.</DialogDescription>
+          <fieldset class="space-y-2"><div class="flex items-center justify-between gap-2"><legend class="text-sm font-medium">Permisos (scopes)</legend><div class="flex gap-2"><Button type="button" variant="ghost" size="sm" @click="selectAllScopes">{{ areAllScopesSelected ? 'Todos seleccionados' : 'Seleccionar todos' }}</Button><Button type="button" variant="ghost" size="sm" @click="clearScopes">Limpiar</Button></div></div><p class="text-xs text-muted-foreground">Puedes seleccionar de uno a todos los permisos disponibles.</p><label v-for="scope in API_KEY_SCOPES" :key="scope" class="flex items-center gap-2 text-sm"><Checkbox :model-value="form.scopes.includes(scope)" :value="scope" @update:model-value="checked => toggleScope(scope, Boolean(checked))" />{{ scope }}</label></fieldset>
+          <DialogDescription>Selecciona un proyecto accesible, de uno a todos los permisos disponibles y una expiración válida.</DialogDescription>
           <DialogFooter><Button type="button" variant="outline" @click="closeForm">Cancelar</Button><Button type="submit" :disabled="!isFormValid || actionLoading">{{ actionLoading ? 'Guardando...' : 'Guardar' }}</Button></DialogFooter>
         </form>
       </DialogContent>

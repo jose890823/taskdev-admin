@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ApiKeysPage from '~/pages/api-keys/index.vue'
+import { API_KEY_SCOPES } from '~/modules/api-keys/types'
 
 const mocks = {
   user: ref<any>(null),
@@ -118,14 +119,14 @@ describe('API-key management page', () => {
     expect((submit.element as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('rejects more than six scopes and unsupported expiry values before mutation', async () => {
+  it('rejects unsupported scopes and expiry values before mutation', async () => {
     const wrapper = await mountPage()
     await wrapper.findAll('button').find(button => button.text() === 'Crear clave API')!.trigger('click')
     await wrapper.get('#api-key-name').setValue('Bounded key')
     await wrapper.get('#project-id').setValue('project-1')
 
     const form = (wrapper.vm as any).$?.setupState.form
-    form.scopes = [...mocks.apiKeys.value[0].scopes, 'tasks:write', 'projects:read', 'projects:write', 'comments:read', 'comments:write', 'unsupported']
+    form.scopes = ['unsupported']
     await flushPromises()
     expect((wrapper.get('button[type="submit"]').element as HTMLButtonElement).disabled).toBe(true)
     await wrapper.get('form').trigger('submit')
@@ -146,13 +147,14 @@ describe('API-key management page', () => {
     expect(wrapper.text()).toContain('Ada Lovelace')
   })
 
-  it('selects the maximum allowed scopes and can clear them', async () => {
+  it('selects all available scopes and can clear them', async () => {
     const wrapper = await mountPage()
     await wrapper.findAll('button').find(button => button.text() === 'Crear clave API')!.trigger('click')
 
     const form = (wrapper.vm as any).$?.setupState.form
-    await wrapper.findAll('button').find(button => button.text() === 'Seleccionar máximo (6)')!.trigger('click')
-    expect(form.scopes).toHaveLength(6)
+    await wrapper.findAll('button').find(button => button.text() === 'Seleccionar todos')!.trigger('click')
+    expect(form.scopes).toEqual([...API_KEY_SCOPES])
+    expect(wrapper.text()).toContain('Todos seleccionados')
 
     await wrapper.findAll('button').find(button => button.text() === 'Limpiar')!.trigger('click')
     expect(form.scopes).toEqual([])
