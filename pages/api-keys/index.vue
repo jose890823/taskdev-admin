@@ -9,6 +9,7 @@ import {
   type ApiKeyMetadata,
   type ApiKeyScope,
   type ApiKeySecretResult,
+  MAX_API_KEY_SCOPES,
 } from '~/modules/api-keys/types'
 import { useProjects } from '~/modules/projects/composables/useProjects'
 import { useUsers } from '~/modules/users/composables/useUsers'
@@ -52,11 +53,12 @@ const actionLoading = ref(false)
 const copied = ref(false)
 
 const isFormValid = computed(() => Boolean(
-  form.name.trim() && form.projectId && form.scopes.length >= 1 && form.scopes.length <= 6 && API_KEY_EXPIRY_DAYS.includes(form.expirationDays),
+  form.name.trim() && form.projectId && form.scopes.length >= 1 && form.scopes.length <= MAX_API_KEY_SCOPES && API_KEY_EXPIRY_DAYS.includes(form.expirationDays),
 ))
 
-const statusLabels = { active: 'Active', expired: 'Expired', revoked: 'Revoked' } as const
+const statusLabels = { active: 'Activa', expired: 'Expirada', revoked: 'Revocada' } as const
 const statusVariants = { active: 'default', expired: 'secondary', revoked: 'destructive' } as const
+const areAllScopesSelected = computed(() => form.scopes.length === MAX_API_KEY_SCOPES)
 
 const safeError = computed(() => formError.value || error.value)
 const isEditing = computed(() => Boolean(editingKey.value))
@@ -115,6 +117,14 @@ const toggleScope = (scope: ApiKeyScope, checked: boolean) => {
   if (!checked) form.scopes = form.scopes.filter(value => value !== scope)
 }
 
+const selectMaximumScopes = () => {
+  form.scopes = [...API_KEY_SCOPES.slice(0, MAX_API_KEY_SCOPES)]
+}
+
+const clearScopes = () => {
+  form.scopes = []
+}
+
 const payload = () => ({
   name: form.name.trim(),
   projectId: form.projectId,
@@ -152,7 +162,7 @@ const handleSave = async () => {
     closeForm()
     showSecret(result)
   } catch {
-    formError.value = error.value || 'The API-key request was rejected.'
+    formError.value = error.value || 'La solicitud de la clave API fue rechazada.'
   } finally {
     actionLoading.value = false
   }
@@ -176,7 +186,7 @@ const handleRevoke = async () => {
     await revokeApiKey(revokeTarget.value.id)
     revokeTarget.value = null
   } catch {
-    formError.value = error.value || 'The API-key could not be revoked.'
+    formError.value = error.value || 'No se pudo revocar la clave API.'
   } finally {
     actionLoading.value = false
   }
@@ -198,10 +208,10 @@ const goToPage = async (page: number) => {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-lg font-semibold tracking-tight">API keys</h1>
-        <p class="text-xs text-muted-foreground">Manage project-bound credentials. Secrets are shown only once.</p>
+        <h1 class="text-lg font-semibold tracking-tight">Claves API</h1>
+        <p class="text-xs text-muted-foreground">Gestiona credenciales vinculadas a proyectos. Los secretos solo se muestran una vez.</p>
       </div>
-      <Button size="sm" @click="openCreate">Create API key</Button>
+      <Button size="sm" @click="openCreate">Crear clave API</Button>
     </div>
 
     <div v-if="safeError" role="alert" class="rounded-lg border border-destructive bg-destructive/10 px-4 py-3 text-destructive">
@@ -209,10 +219,10 @@ const goToPage = async (page: number) => {
     </div>
 
     <Card>
-      <CardHeader><CardTitle>Managed keys</CardTitle><CardDescription>Server-authoritative status and ownership metadata.</CardDescription></CardHeader>
+      <CardHeader><CardTitle>Claves administradas</CardTitle><CardDescription>Estado y propietario determinados por el servidor.</CardDescription></CardHeader>
       <CardContent>
-        <div v-if="loading" class="py-8 text-center text-muted-foreground">Loading...</div>
-        <div v-else-if="apiKeys.length === 0" class="py-8 text-center text-muted-foreground">No API keys found.</div>
+        <div v-if="loading" class="py-8 text-center text-muted-foreground">Cargando...</div>
+        <div v-else-if="apiKeys.length === 0" class="py-8 text-center text-muted-foreground">No se encontraron claves API.</div>
           <div v-else class="space-y-3">
           <article v-for="key in apiKeys" :key="key.id" class="rounded-md border p-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -223,16 +233,16 @@ const goToPage = async (page: number) => {
               <Badge :variant="statusVariants[key.status]">{{ statusLabel(key) }}</Badge>
             </div>
             <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>Scopes: {{ key.scopes.join(', ') }}</span>
-              <span>Created: {{ formatDateShort(key.createdAt) }}</span>
-              <span>Last used: {{ key.lastUsedAt ? formatDateShort(key.lastUsedAt) : 'Never' }}</span>
-              <span>Expires: {{ formatDateShort(key.expiresAt) }}</span>
-              <span v-if="key.revokedAt">Revoked: {{ formatDateShort(key.revokedAt) }}</span>
+              <span>Permisos: {{ key.scopes.join(', ') }}</span>
+              <span>Creada: {{ formatDateShort(key.createdAt) }}</span>
+              <span>Último uso: {{ key.lastUsedAt ? formatDateShort(key.lastUsedAt) : 'Nunca' }}</span>
+              <span>Expira: {{ formatDateShort(key.expiresAt) }}</span>
+              <span v-if="key.revokedAt">Revocada: {{ formatDateShort(key.revokedAt) }}</span>
             </div>
             <div class="mt-3 flex gap-2">
-              <Button size="sm" variant="outline" :aria-label="`Inspect ${key.id}`" @click="inspect(key)">Inspect</Button>
-              <Button v-if="key.status === 'active'" size="sm" variant="outline" @click="openReplace(key)">Replace</Button>
-              <Button v-if="key.status === 'active'" size="sm" variant="destructive" @click="confirmRevoke(key)">Revoke</Button>
+              <Button size="sm" variant="outline" :aria-label="`Inspeccionar ${key.id}`" @click="inspect(key)">Inspeccionar</Button>
+              <Button v-if="key.status === 'active'" size="sm" variant="outline" @click="openReplace(key)">Reemplazar</Button>
+              <Button v-if="key.status === 'active'" size="sm" variant="destructive" @click="confirmRevoke(key)">Revocar</Button>
             </div>
             </article>
           </div>
@@ -246,27 +256,27 @@ const goToPage = async (page: number) => {
 
     <Dialog v-model:open="formOpen">
       <DialogContent>
-        <DialogHeader><DialogTitle>{{ isEditing ? 'Replace API key' : 'Create API key' }}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{{ isEditing ? 'Reemplazar clave API' : 'Crear clave API' }}</DialogTitle></DialogHeader>
         <form class="space-y-4" @submit.prevent="handleSave">
-          <div class="space-y-2"><Label for="api-key-name">Name</Label><Input id="api-key-name" v-model="form.name" autocomplete="off" /></div>
-          <div class="space-y-2"><Label for="project-id">Project</Label><Select id="project-id" v-model="form.projectId"><SelectTrigger><SelectValue placeholder="Select a project" /></SelectTrigger><SelectContent><SelectItem v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</SelectItem></SelectContent></Select></div>
-          <div v-if="isSuperAdmin" class="space-y-2"><Label for="owner-id">Owner (server-authorized)</Label><Select id="owner-id" v-model="form.ownerId"><SelectTrigger><SelectValue placeholder="Server default" /></SelectTrigger><SelectContent><SelectItem v-for="owner in users" :key="owner.id" :value="owner.id">{{ owner.firstName }} {{ owner.lastName }} ({{ owner.email }})</SelectItem></SelectContent></Select></div>
-          <div class="space-y-2"><Label for="expiry-days">Expiry</Label><Select id="expiry-days" v-model="form.expirationDays"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem v-for="days in API_KEY_EXPIRY_DAYS" :key="days" :value="days">{{ days }} days</SelectItem></SelectContent></Select></div>
-          <fieldset class="space-y-2"><legend class="text-sm font-medium">Scopes</legend><label v-for="scope in API_KEY_SCOPES" :key="scope" class="flex items-center gap-2 text-sm"><Checkbox :model-value="form.scopes.includes(scope)" :value="scope" @update:model-value="checked => toggleScope(scope, Boolean(checked))" />{{ scope }}</label></fieldset>
-          <DialogDescription>Select one accessible project, one to six approved scopes, and a supported expiry.</DialogDescription>
-          <DialogFooter><Button type="button" variant="outline" @click="closeForm">Cancel</Button><Button type="submit" :disabled="!isFormValid || actionLoading">{{ actionLoading ? 'Saving...' : 'Save' }}</Button></DialogFooter>
+          <div class="space-y-2"><Label for="api-key-name">Nombre</Label><Input id="api-key-name" v-model="form.name" autocomplete="off" /></div>
+          <div class="space-y-2"><Label for="project-id">Proyecto</Label><Select id="project-id" v-model="form.projectId"><SelectTrigger><SelectValue placeholder="Selecciona un proyecto" /></SelectTrigger><SelectContent><SelectItem v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</SelectItem></SelectContent></Select></div>
+          <div v-if="isSuperAdmin" class="space-y-2"><Label for="owner-id">Propietario (autorizado por el servidor)</Label><Select id="owner-id" v-model="form.ownerId"><SelectTrigger><SelectValue placeholder="Predeterminado del servidor" /></SelectTrigger><SelectContent><SelectItem v-for="owner in users" :key="owner.id" :value="owner.id">{{ owner.firstName }} {{ owner.lastName }} ({{ owner.email }})</SelectItem></SelectContent></Select></div>
+          <div class="space-y-2"><Label for="expiry-days">Expiración</Label><Select id="expiry-days" v-model="form.expirationDays"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem v-for="days in API_KEY_EXPIRY_DAYS" :key="days" :value="days">{{ days }} días</SelectItem></SelectContent></Select></div>
+          <fieldset class="space-y-2"><div class="flex items-center justify-between gap-2"><legend class="text-sm font-medium">Permisos (scopes)</legend><div class="flex gap-2"><Button type="button" variant="ghost" size="sm" @click="selectMaximumScopes">{{ areAllScopesSelected ? 'Máximo seleccionado' : `Seleccionar máximo (${MAX_API_KEY_SCOPES})` }}</Button><Button type="button" variant="ghost" size="sm" @click="clearScopes">Limpiar</Button></div></div><p class="text-xs text-muted-foreground">Puedes seleccionar hasta {{ MAX_API_KEY_SCOPES }} permisos.</p><label v-for="scope in API_KEY_SCOPES" :key="scope" class="flex items-center gap-2 text-sm"><Checkbox :model-value="form.scopes.includes(scope)" :value="scope" @update:model-value="checked => toggleScope(scope, Boolean(checked))" />{{ scope }}</label></fieldset>
+          <DialogDescription>Selecciona un proyecto accesible, de uno a seis permisos aprobados y una expiración válida.</DialogDescription>
+          <DialogFooter><Button type="button" variant="outline" @click="closeForm">Cancelar</Button><Button type="submit" :disabled="!isFormValid || actionLoading">{{ actionLoading ? 'Guardando...' : 'Guardar' }}</Button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
 
      <Dialog :open="Boolean(inspectedKey)" @update:open="inspectedKey = null">
-       <DialogContent v-if="inspectedKey"><DialogHeader><DialogTitle>{{ inspectedKey.name }}</DialogTitle><DialogDescription>Metadata only. Secret recovery is unavailable.</DialogDescription></DialogHeader><div class="space-y-2 text-sm"><p>Owner: {{ getOwnerLabel(inspectedKey) }}</p><p>Project: {{ getProjectLabel(inspectedKey) }}</p><p>Status: {{ statusLabel(inspectedKey) }}</p><p>Expires: {{ formatDateShort(inspectedKey.expiresAt) }}</p></div><DialogFooter><Button variant="outline" @click="inspectedKey = null">Close</Button></DialogFooter></DialogContent>
+       <DialogContent v-if="inspectedKey"><DialogHeader><DialogTitle>{{ inspectedKey.name }}</DialogTitle><DialogDescription>Solo metadatos. El secreto no se puede recuperar.</DialogDescription></DialogHeader><div class="space-y-2 text-sm"><p>Propietario: {{ getOwnerLabel(inspectedKey) }}</p><p>Proyecto: {{ getProjectLabel(inspectedKey) }}</p><p>Estado: {{ statusLabel(inspectedKey) }}</p><p>Expira: {{ formatDateShort(inspectedKey.expiresAt) }}</p></div><DialogFooter><Button variant="outline" @click="inspectedKey = null">Cerrar</Button></DialogFooter></DialogContent>
     </Dialog>
 
     <Dialog :open="secretOpen" @update:open="clearSecret">
-      <DialogContent v-if="secret"><DialogHeader><DialogTitle>Copy your API key secret</DialogTitle><DialogDescription>This secret will not be shown again after closing this dialog.</DialogDescription></DialogHeader><code class="block break-all rounded bg-muted p-3 text-sm" data-testid="one-time-secret">{{ secret }}</code><DialogFooter><Button type="button" variant="outline" @click="copySecret">{{ copied ? 'Copied' : 'Copy secret' }}</Button><Button type="button" @click="clearSecret">Close</Button></DialogFooter></DialogContent>
+       <DialogContent v-if="secret"><DialogHeader><DialogTitle>Copia el secreto de tu clave API</DialogTitle><DialogDescription>Este secreto no volverá a mostrarse después de cerrar este diálogo.</DialogDescription></DialogHeader><code class="block break-all rounded bg-muted p-3 text-sm" data-testid="one-time-secret">{{ secret }}</code><DialogFooter><Button type="button" variant="outline" @click="copySecret">{{ copied ? 'Copiado' : 'Copiar secreto' }}</Button><Button type="button" @click="clearSecret">Cerrar</Button></DialogFooter></DialogContent>
     </Dialog>
 
-    <AlertDialog :open="Boolean(revokeTarget)" @update:open="revokeTarget = null"><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Revoke API key?</AlertDialogTitle><AlertDialogDescription>This cannot be undone for {{ revokeTarget?.name }}.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel @click="revokeTarget = null">Cancel</AlertDialogCancel><AlertDialogAction :disabled="actionLoading" @click="handleRevoke">Revoke</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+     <AlertDialog :open="Boolean(revokeTarget)" @update:open="revokeTarget = null"><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>¿Revocar clave API?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer para {{ revokeTarget?.name }}.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel @click="revokeTarget = null">Cancelar</AlertDialogCancel><AlertDialogAction :disabled="actionLoading" @click="handleRevoke">Revocar</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>
 </template>

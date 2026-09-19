@@ -15,11 +15,11 @@ import type {
 
 const getApiUrl = () => useRuntimeConfig().public.apiUrl as string
 const defaultPagination: ApiKeyPagination = { page: 1, limit: 20, total: 0, totalPages: 0 }
-const SAFE_ERROR = 'The request could not be completed safely.'
+const SAFE_ERROR = 'No se pudo completar la solicitud de forma segura.'
 
 const getErrorMessage = (error: any): string => {
   const message = error?.data?.error?.message || error?.data?.message || error?.message
-  if (!message) return 'Unable to complete the API-key request.'
+  if (!message) return 'No se pudo completar la solicitud de la clave API.'
   if (/(?:thk_[\w.-]+|(?:secret|token|authorization|bearer)\s*[:=]\s*\S+)/i.test(message)) return SAFE_ERROR
   return message
 }

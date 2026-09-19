@@ -151,7 +151,7 @@ describe('useApiKeys lifecycle contract', () => {
     await expect(apiKeys.replaceApiKey('key-1', input)).resolves.toEqual(replaceResult)
 
     expect(apiKeys.loading.value).toBe(false)
-    expect(apiKeys.error.value).toBe('The request could not be completed safely.')
+    expect(apiKeys.error.value).toBe('No se pudo completar la solicitud de forma segura.')
     expect(fetchMock).toHaveBeenCalledTimes(4)
   })
 
@@ -200,7 +200,7 @@ describe('useApiKeys lifecycle contract', () => {
 
     expect(logout).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(apiKeys.error.value).toBe('The request could not be completed safely.')
+    expect(apiKeys.error.value).toBe('No se pudo completar la solicitud de forma segura.')
     expect(apiKeys.error.value).not.toContain('thk_public_secret-value')
     expect(apiKeys.error.value).not.toContain('one-time-secret')
   })

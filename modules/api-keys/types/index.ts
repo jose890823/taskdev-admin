@@ -43,6 +43,8 @@ export const API_KEY_SCOPES: readonly ApiKeyScope[] = [
   'invitations:write',
 ]
 
+export const MAX_API_KEY_SCOPES = 6
+
 export const API_KEY_EXPIRY_DAYS: readonly ApiKeyExpiryDays[] = [30, 90, 180, 365]
 
 export interface ApiKeyOwnerSummary {

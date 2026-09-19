@@ -120,7 +120,7 @@ describe('API-key management page', () => {
 
   it('rejects more than six scopes and unsupported expiry values before mutation', async () => {
     const wrapper = await mountPage()
-    await wrapper.findAll('button').find(button => button.text() === 'Create API key')!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Crear clave API')!.trigger('click')
     await wrapper.get('#api-key-name').setValue('Bounded key')
     await wrapper.get('#project-id').setValue('project-1')
 
@@ -141,9 +141,21 @@ describe('API-key management page', () => {
 
   it('renders server status and expiry metadata with the date utility output', async () => {
     const wrapper = await mountPage()
-    expect(wrapper.text()).toContain('Expired')
+    expect(wrapper.text()).toContain('Expirada')
     expect(wrapper.text()).toContain('15 dic 2026')
     expect(wrapper.text()).toContain('Ada Lovelace')
+  })
+
+  it('selects the maximum allowed scopes and can clear them', async () => {
+    const wrapper = await mountPage()
+    await wrapper.findAll('button').find(button => button.text() === 'Crear clave API')!.trigger('click')
+
+    const form = (wrapper.vm as any).$?.setupState.form
+    await wrapper.findAll('button').find(button => button.text() === 'Seleccionar máximo (6)')!.trigger('click')
+    expect(form.scopes).toHaveLength(6)
+
+    await wrapper.findAll('button').find(button => button.text() === 'Limpiar')!.trigger('click')
+    expect(form.scopes).toEqual([])
   })
 
   it('renders API-key metadata without nested summaries and uses local names in the list and inspect dialog', async () => {
@@ -167,14 +179,14 @@ describe('API-key management page', () => {
     const wrapper = await mountPage()
     expect(wrapper.text()).toContain('Local TaskHub · Local Owner')
 
-    await wrapper.findAll('button').find(button => button.text() === 'Replace')!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Reemplazar')!.trigger('click')
     expect((wrapper.get('#project-id').element as HTMLSelectElement).value).toBe('project-1')
 
-    await wrapper.get('button[aria-label="Inspect key-1"]').trigger('click')
+    await wrapper.get('button[aria-label="Inspeccionar key-1"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Owner: Local Owner')
-    expect(wrapper.text()).toContain('Project: Local TaskHub')
+    expect(wrapper.text()).toContain('Propietario: Local Owner')
+    expect(wrapper.text()).toContain('Proyecto: Local TaskHub')
   })
 
   it('falls back to owner and project IDs when API-key summaries and local records are unavailable', async () => {
@@ -198,11 +210,11 @@ describe('API-key management page', () => {
     const wrapper = await mountPage()
     expect(wrapper.text()).toContain('project-1 · owner-1')
 
-    await wrapper.get('button[aria-label="Inspect key-1"]').trigger('click')
+    await wrapper.get('button[aria-label="Inspeccionar key-1"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Owner: owner-1')
-    expect(wrapper.text()).toContain('Project: project-1')
+    expect(wrapper.text()).toContain('Propietario: owner-1')
+    expect(wrapper.text()).toContain('Proyecto: project-1')
   })
 
   it('renders every lifecycle status from the server without deriving a client status', async () => {
@@ -212,9 +224,9 @@ describe('API-key management page', () => {
       { ...metadata, id: 'revoked-key', status: 'revoked' },
     ]
     const wrapper = await mountPage()
-    expect(wrapper.text()).toContain('Active')
-    expect(wrapper.text()).toContain('Expired')
-    expect(wrapper.text()).toContain('Revoked')
+    expect(wrapper.text()).toContain('Activa')
+    expect(wrapper.text()).toContain('Expirada')
+    expect(wrapper.text()).toContain('Revocada')
   })
 
   it('renders server pagination and requests the selected page', async () => {
@@ -261,7 +273,7 @@ describe('API-key management page', () => {
   it('inspects metadata without invoking recovery', async () => {
     mocks.fetchApiKey.mockResolvedValueOnce(metadata)
     const wrapper = await mountPage()
-    await wrapper.get('button[aria-label="Inspect key-1"]').trigger('click')
+    await wrapper.get('button[aria-label="Inspeccionar key-1"]').trigger('click')
     await flushPromises()
 
     expect(mocks.fetchApiKey).toHaveBeenCalledWith('key-1')
@@ -283,42 +295,42 @@ describe('API-key management page', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-testid="one-time-secret"]').text()).toBe('thk_one_time_secret')
-    await wrapper.findAll('button').filter(button => button.text() === 'Copy secret')[0].trigger('click')
+    await wrapper.findAll('button').filter(button => button.text() === 'Copiar secreto')[0].trigger('click')
     expect(writeText).toHaveBeenCalledWith('thk_one_time_secret')
     expect(storage).not.toHaveBeenCalled()
     expect(pushState).not.toHaveBeenCalled()
-    await wrapper.findAll('button').filter(button => button.text() === 'Close')[0].trigger('click')
+    await wrapper.findAll('button').filter(button => button.text() === 'Cerrar')[0].trigger('click')
     expect(wrapper.find('[data-testid="one-time-secret"]').exists()).toBe(false)
   })
 
   it('keeps metadata and shows safe errors when create, replace, or revoke is rejected', async () => {
     mocks.apiKeys.value = [{ ...metadata, status: 'active' }]
-    mocks.error.value = 'The request could not be completed safely.'
+    mocks.error.value = 'No se pudo completar la solicitud de forma segura.'
     mocks.createApiKey.mockRejectedValueOnce(new Error('secret=thk_hidden'))
     mocks.replaceApiKey.mockRejectedValueOnce(new Error('secret=thk_hidden'))
     mocks.revokeApiKey.mockRejectedValueOnce(new Error('secret=thk_hidden'))
     const wrapper = await mountPage()
 
-    await wrapper.findAll('button').find(button => button.text() === 'Create API key')!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Crear clave API')!.trigger('click')
     await wrapper.get('#api-key-name').setValue('Rejected create')
     await wrapper.get('#project-id').setValue('project-1')
     await wrapper.get('button[type="submit"]').trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[role="alert"]').text()).toContain('safely')
+    expect(wrapper.get('[role="alert"]').text()).toContain('segura')
     expect(wrapper.text()).not.toContain('thk_hidden')
 
-    await wrapper.findAll('button').find(button => button.text() === 'Cancel')!.trigger('click')
-    await wrapper.findAll('button').find(button => button.text() === 'Replace')!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Cancelar')!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Reemplazar')!.trigger('click')
     await wrapper.get('button[type="submit"]').trigger('submit')
     await flushPromises()
     expect(wrapper.text()).toContain('Task reader')
     expect(wrapper.text()).not.toContain('thk_hidden')
 
-    await wrapper.findAll('button').find(button => button.text() === 'Revoke')!.trigger('click')
-    await wrapper.findAll('button').filter(button => button.text() === 'Revoke').at(-1)!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Revocar')!.trigger('click')
+    await wrapper.findAll('button').filter(button => button.text() === 'Revocar').at(-1)!.trigger('click')
     await flushPromises()
-    expect(wrapper.get('[role="alert"]').text()).toContain('safely')
-    expect(wrapper.text()).toContain('Active')
+    expect(wrapper.get('[role="alert"]').text()).toContain('segura')
+    expect(wrapper.text()).toContain('Activa')
   })
 
   it('renders the revoked state returned by a successful revoke', async () => {
@@ -329,37 +341,37 @@ describe('API-key management page', () => {
     })
     const wrapper = await mountPage()
 
-    await wrapper.findAll('button').find(button => button.text() === 'Revoke')!.trigger('click')
-    await wrapper.findAll('button').filter(button => button.text() === 'Revoke').at(-1)!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Revocar')!.trigger('click')
+    await wrapper.findAll('button').filter(button => button.text() === 'Revocar').at(-1)!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Revoked')
-    expect(wrapper.get('article').findAll('button').filter(button => button.text() === 'Revoke').length).toBe(0)
+    expect(wrapper.text()).toContain('Revocada')
+    expect(wrapper.get('article').findAll('button').filter(button => button.text() === 'Revocar').length).toBe(0)
   })
 
   it('discloses a replacement secret and clears it after dismissal', async () => {
     mocks.apiKeys.value = [{ ...metadata, status: 'active' }]
     mocks.replaceApiKey.mockResolvedValueOnce({ key: metadata, secret: 'thk_replacement_secret' })
     const wrapper = await mountPage()
-    await wrapper.findAll('button').find(button => button.text() === 'Replace')!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Reemplazar')!.trigger('click')
     await wrapper.get('button[type="submit"]').trigger('submit')
     await flushPromises()
 
     expect(wrapper.get('[data-testid="one-time-secret"]').text()).toBe('thk_replacement_secret')
-    await wrapper.findAll('button').filter(button => button.text() === 'Close')[0].trigger('click')
+    await wrapper.findAll('button').filter(button => button.text() === 'Cerrar')[0].trigger('click')
     expect(wrapper.find('[data-testid="one-time-secret"]').exists()).toBe(false)
   })
 
   it('shows a generic safe error when a lifecycle operation has no public message', async () => {
     mocks.createApiKey.mockRejectedValueOnce(new Error('secret=thk_hidden'))
     const wrapper = await mountPage()
-    await wrapper.findAll('button').find(button => button.text() === 'Create API key')!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Crear clave API')!.trigger('click')
     await wrapper.get('#api-key-name').setValue('Rejected key')
     await wrapper.get('#project-id').setValue('project-1')
     await wrapper.get('button[type="submit"]').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.get('[role="alert"]').text()).toContain('request was rejected')
+    expect(wrapper.get('[role="alert"]').text()).toContain('solicitud de la clave API fue rechazada')
     expect(wrapper.text()).not.toContain('thk_hidden')
   })
 })
