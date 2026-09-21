@@ -1,5 +1,5 @@
 # ============================================
-# DOCKERFILE - MiChambita Admin (Nuxt 3)
+# DOCKERFILE - TaskHub Admin (Nuxt 3)
 # Multi-stage build for production deployment
 # ============================================
 
